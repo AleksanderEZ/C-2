@@ -100,7 +100,7 @@ arithmetical_expression:
            | identifier array_size DECREMENT
            | INCREMENT identifier
            | INCREMENT identifier array_size
-           | DECREMENT identifier;
+           | DECREMENT identifier
            | DECREMENT identifier array_size;
 pointer_expression: AMPERSAND expression
            | ASTERISK expression;
