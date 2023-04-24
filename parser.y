@@ -26,7 +26,7 @@ instructions: | instructions instruction;
 instruction: simple_instruction_type SEMICOLON
               | complex_instruction_type;
 simple_instruction_type: | simple_declaration | function_call | assignment | return | BREAK | CONTINUE;
-complex_instruction_type: control | complex_declaration | instruction_block;
+complex_instruction_type: control | instruction_block;
 instruction_block: OPEN_CURLY instructions CLOSE_CURLY;
 
 control: for | while | if;
@@ -54,8 +54,6 @@ condition: OPEN_PARENTHESIS condition CLOSE_PARENTHESIS
           | expression LESSER expression
           | expression LESSER_EQUALS expression;
 assignment: arithmetical_assignment
-           | identifier ASSIGNMENT STRING_VALUE
-           | identifier ASSIGNMENT array
            | identifier ASSIGNMENT reference_pointer
            | identifier ASSIGNMENT dereference_pointer
            | IDENTIFIER array_size ASSIGNMENT expression
@@ -63,7 +61,6 @@ reference_pointer: ASTERISK IDENTIFIER;
 dereference_pointer: AMPERSAND IDENTIFIER;
 array: OPEN_CURLY value_list CLOSE_CURLY;
 arithmetical_assignment: identifier ASSIGNMENT expression;
-complex_declaration: function_declaration;
 simple_declaration: type identifier
                   | type identifier ASSIGNMENT expression
                   | array_declaration;
@@ -73,7 +70,7 @@ function_header: type function_subheader
 function_subheader: identifier OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS
                   | identifier OPEN_PARENTHESIS CLOSE_PARENTHESIS;
 parameters: type identifier | parameters COMMA type identifier;
-array_declaration: type IDENTIFIER array_size
+array_declaration: type identifier array_size
                   | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array;
 array_size: OPEN_SQUARE INT_VALUE CLOSE_SQUARE;
 identifier: IDENTIFIER | ASTERISK IDENTIFIER;
@@ -84,7 +81,7 @@ expression: OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
            | arithmetical_expression
            | pointer_expression
            | value
-           | identifier
+           | IDENTIFIER
            | function_call
            | identifier OPEN_SQUARE expression CLOSE_SQUARE;
 
@@ -106,18 +103,21 @@ pointer_expression: AMPERSAND expression
            | ASTERISK expression;
 function_call: IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS 
              | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS 
-             | MALLOC OPEN_PARENTHESIS IDENTIFIER CLOSE_PARENTHESIS
+             | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
              | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS
              | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS
-             | PRINTF OPEN_PARENTHESIS IDENTIFIER CLOSE_PARENTHESIS
+             | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
              | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS
              | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS;
 arguments: arguments COMMA expression
-          | arguments COMMA STRING_VALUE;
+          | arguments COMMA STRING_VALUE
+          | expression 
+          | STRING_VALUE;
 value_list: expression | value_list COMMA expression;
 value: INT_VALUE 
      | FLOAT_VALUE 
-     | CHAR_VALUE;
+     | CHAR_VALUE
+     | STRING_VALUE;
 return: RETURN expression
       | RETURN;
 %%
