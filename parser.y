@@ -1,9 +1,17 @@
 %{
 #include <stdio.h>
+#include "symbol_table.h"
 extern FILE *yyin;
 extern int yylineno;
 int yydebug = 1;
 void yyerror(char*);
+
+void initST() {
+  newReg("void", type, NULL, NULL);
+  newReg("int", type, NULL, NULL);
+  newReg("float", type, NULL, NULL);
+  newReg("char", type, NULL, NULL);
+}
 %}
 
 %union {float real; int integer; char characater; char* string}
@@ -236,7 +244,10 @@ value
 
 int main(int argc, char** argv) {
   if (argc>1) yyin=fopen(argv[1],"r");
+  initST();
+  dump("Initial ST");
   yyparse();
+  dump("Final ST");
 }
 
 void yyerror(char* message) {
