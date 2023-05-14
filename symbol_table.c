@@ -1,22 +1,23 @@
-#include "symbol_table.h";
+#include "symbol_table.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 struct Reg* top = NULL;
 
-struct entry* search(char* regName) {
+struct Reg* search(char* regName) {
     struct Reg* p = top;
     while(p != NULL && strcmp(p->regName, regName) != 0) p = p->next;
     return p;
 }
 
-struct entry* searchRegType(char* regName, enum RegType regType) {
+struct Reg* searchRegType(char* regName, enum RegType regType) {
     struct Reg *p = search(regName); 
     if(p != NULL && p->type==regType) return p; else return NULL;
 }
 
-int newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
-    if(search(regName) != NULL) yyerror("Error: Name already defined");
+void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
+    if(search(regName) != NULL) printf("Error: Name already defined");
     struct Reg* new = (struct Reg*) malloc(sizeof(struct Reg));
     new->regName = regName;
     new->type = type;
@@ -24,17 +25,16 @@ int newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
     new->lineOfDeclaration = line;
     new->next = top;
     top = new;
-    return top;
 }
 
-int closeBlock() {
+void closeBlock() {
     while(top != NULL && top->type != function) {
-        struct reg *p = top->next;
+        struct Reg *p = top->next;
         free(top->regName); free(top); top=p;
     }
 }
 
-int free(const char* message) {
+void clear(const char* message) {
     printf("--INIT FREE -- %s", message);
     struct Reg* p = top;
     while(p != NULL){

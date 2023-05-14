@@ -1,16 +1,40 @@
 %{
 #include <stdio.h>
+#include <string.h>
 #include "symbol_table.h"
 extern FILE *yyin;
 extern int yylineno;
 int yydebug = 1;
 void yyerror(char*);
 
+enum RegType variableSwitch = globalVariable;
+
 void initST() {
   newReg("void", type, NULL, NULL);
   newReg("int", type, NULL, NULL);
   newReg("float", type, NULL, NULL);
   newReg("char", type, NULL, NULL);
+}
+
+void declaration(char* type, char* name, int line) {
+  struct Reg* t = searchRegType($1, type);
+  if (t != NULL || t == voidp) yyerror("Type does not exist");
+  newReg(name, variableSwitch, t, line);
+}
+
+void functionDeclarion(char* type, char* name, int line) {
+  struct Reg* t = searchRegType($1, type);
+  if (t != NULL || t == voidp) yyerror("Type does not exist");
+  char* functionName = strtok(name, "(");
+  newReg(functionName, function, t, line);
+}
+
+void checkFunExists(char* name) {
+  if (searchRegType(name, function) == NULL) yyerror("Function has not been declared");
+}
+
+void checkVarExists() {
+  if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL) yyerror("Variable has not been declared");
 }
 %}
 
@@ -56,7 +80,7 @@ simple_instruction_type
   ;
 
 simple_declaration
-  : type IDENTIFIER
+  : type IDENTIFIER { declaration($1, $2, yylineno) }
   | type assignment
   | array_declaration
   ;
@@ -67,7 +91,7 @@ complex_instruction_type
   ;
 
 instruction_block
-  : OPEN_CURLY instructions CLOSE_CURLY
+  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY {dump($2); closeBlock(); variableSwitch = globalVariable}
   ;
 
 control
@@ -135,45 +159,45 @@ condition
 
 assignment
   : arithmetical_assignment
-  | IDENTIFIER array_index ASSIGNMENT expression
+  | IDENTIFIER array_index ASSIGNMENT expression { checkVarExists($1); }
   ;
 
 arithmetical_assignment
-  : IDENTIFIER ASSIGNMENT expression
+  : IDENTIFIER ASSIGNMENT expression { checkVarExists($1); }
   ;
 
 expression
   : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
   | value
   | function_call
-  | IDENTIFIER array_index
+  | IDENTIFIER array_index { checkVarExists($1); }
   | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression
-  | IDENTIFIER
-  | AMPERSAND IDENTIFIER
-  | ASTERISK IDENTIFIER
+  | IDENTIFIER { checkVarExists($1); }
+  | AMPERSAND IDENTIFIER { checkVarExists($2); }
+  | ASTERISK IDENTIFIER { checkVarExists($2); }
   | expression ADDITION expression
   | expression SUBTRACTION expression 
   | expression DIVISION expression 
   | expression ASTERISK expression 
   | expression MODULUS expression
-  | IDENTIFIER INCREMENT
-  | IDENTIFIER array_index INCREMENT
-  | IDENTIFIER DECREMENT
-  | IDENTIFIER array_index DECREMENT
-  | INCREMENT IDENTIFIER
-  | INCREMENT IDENTIFIER array_index
-  | DECREMENT IDENTIFIER
-  | DECREMENT IDENTIFIER array_index
+  | IDENTIFIER INCREMENT { checkVarExists($1); }
+  | IDENTIFIER array_index INCREMENT { checkVarExists($1); }
+  | IDENTIFIER DECREMENT { checkVarExists($1); }
+  | IDENTIFIER array_index DECREMENT { checkVarExists($1); }
+  | INCREMENT IDENTIFIER { checkVarExists($2); }
+  | INCREMENT IDENTIFIER array_index { checkVarExists($2); }
+  | DECREMENT IDENTIFIER { checkVarExists($2); }
+  | DECREMENT IDENTIFIER array_index { checkVarExists($2); }
   ;
 
 function_call
-  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS 
-  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS 
-  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
-  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS
+  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); argumentsDeclaration()}
+  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); }
+  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists($1); }
+  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { checkFunExists($1); }
+  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists($1); }
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { checkFunExists($1); }
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { checkFunExists($1); }
   ;
 
 arguments
@@ -200,8 +224,8 @@ function_declaration
   ;
 
 function_header
-  : type function_subheader
-  | VOID function_subheader
+  : type function_subheader { functionDeclaration($1, $2, yylineno); }
+  | VOID function_subheader { functionDeclaration($1, $2, yylineno); }
   ;
 
 function_subheader

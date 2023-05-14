@@ -1,12 +1,13 @@
 /* literal */
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
- int tok;
- while(tok = yylex()) {
- printf("%d", tok);
- if(tok == NUMBER) printf(" = %d\n", yylval);
- else printf("\n");
- }
+    int n;
+    while(n < 10) {
+        printf("%d", n);
+        if(n % 2 == 0) printf("Par\n");
+        else printf(" Impar\n");
+        n++;
+    }
 }
 
 

@@ -8,9 +8,9 @@ struct Reg {
     struct Reg* next;
 };
 
-struct entry* search(char* id);
-struct entry* searchRegType(char* id, enum RegType regType);
-int newReg(char* regName, enum RegType type, struct Reg* typeReg, int line);
-int closeBlock();
-int free();
+struct Reg* search(char* regName);
+struct Reg* searchRegType(char* id, enum RegType regType);
+void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line);
+void closeBlock();
+void clear();
 void dump(const char* message);
