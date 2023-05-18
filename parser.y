@@ -27,8 +27,27 @@ void declaration(char* typeName, char* name, int line) {
 void functionDeclaration(char* typeName, char* name, int line) {
   struct Reg* t = searchRegType(typeName, type);
   if (t != NULL) yyerror("Type does not exist");
-  //char* functionName = strtok(name, "(");
-  newReg(name, function, t, line);
+  char* functionName = strtok(name, "(");
+  newReg(functionName, function, t, line);
+
+  char* tokens[10];
+  char* token = strtok(NULL, ",");
+  int i = 0;
+  while (token != NULL) {
+    tokens[i] = token;
+    //printf("%s\n", tokens[i]);
+    i++;
+    token = strtok(NULL, ",");
+  }
+
+  variableSwitch = localVariable;
+  char* type = malloc(sizeof(char) * 10);
+  char* parameterName = malloc(sizeof(char) * 50);
+  for(int j = 0; j < i; j++){
+    type = strtok(tokens[j], " ");
+    parameterName = strtok(NULL, " ");
+    declaration(type, parameterName, line);
+  }
 }
 
 void checkFunExists(char* name) {
@@ -59,6 +78,7 @@ void checkVarExists(char* name) {
 
 %type <string> type
 %type <string> function_subheader
+%type <string> parameters
 
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
@@ -123,7 +143,7 @@ for_header
 first_part_for
   : 
   | arithmetical_assignment 
-  | type IDENTIFIER ASSIGNMENT expression
+  | type IDENTIFIER ASSIGNMENT expression { variableSwitch = localVariable; declaration($1, $2, yylineno); variableSwitch = globalVariable;}
   ;
 
 third_part_for
@@ -241,18 +261,18 @@ function_header
   ;
 
 function_subheader
-  : IDENTIFIER OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS
+  : IDENTIFIER OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS { char* pointer = malloc(400 * sizeof(char)); strcat(pointer, $1); strcat(pointer, "("); strcat(pointer, $3); $$ = pointer; }
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS
   ;
 
 parameters
-  : type IDENTIFIER 
-  | parameters COMMA type IDENTIFIER
+  : type IDENTIFIER { char* pointer = malloc(50 * sizeof(char)); strcat(pointer, $1); strcat(pointer, " "); strcat(pointer, $2); $$ = pointer; }
+  | parameters COMMA type IDENTIFIER { char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); strcat(pointer, " "), strcat(pointer, $4); $$ = pointer;}
   ;
 
 array_declaration
-  : type IDENTIFIER array_index
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array
+  : type IDENTIFIER array_index { declaration($1, $2, yylineno); }
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); }
   ;
 
 array_index
@@ -280,7 +300,7 @@ int main(int argc, char** argv) {
   dump("Initial ST");
   yyparse();
   dump("Final ST");
-  clear("");
+  clear();
 }
 
 void yyerror(char* message) {

@@ -8,6 +8,7 @@ struct Reg {
     struct Reg* next;
 };
 
+struct Reg* getTop();
 struct Reg* search(char* regName);
 struct Reg* searchRegType(char* id, enum RegType regType);
 void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line);

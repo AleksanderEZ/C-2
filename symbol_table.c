@@ -34,17 +34,15 @@ void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
 void closeBlock() {
     while(top != NULL && top->type != function) {
         struct Reg *p = top->next;
-        free(top->regName); free(top); top=p;
+        /* free(top->regName); */ free(top); top=p;
     }
 }
 
-void clear(const char* message) {
-    printf("--INIT FREE -- %s", message);
+void clear() {
+    printf("--INIT FREE --");
     while(top != NULL){
         struct Reg* p = top->next;
-        free(top->regName);
-        free(top);
-        top = p;
+        /* free(top->regName); */ free(top); top = p;
     }
     top = NULL;
 }
