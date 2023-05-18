@@ -11,6 +11,10 @@ struct Reg* search(char* regName) {
     return p;
 }
 
+struct Reg* getTop() {
+    return top;
+}
+
 struct Reg* searchRegType(char* regName, enum RegType regType) {
     struct Reg *p = search(regName); 
     if(p != NULL && p->type==regType) return p; else return NULL;
@@ -36,20 +40,20 @@ void closeBlock() {
 
 void clear(const char* message) {
     printf("--INIT FREE -- %s", message);
-    struct Reg* p = top;
-    while(p != NULL){
-        struct Reg* freePointer = p;
-        p = p->next;
-        free(freePointer->regName);
-        free(freePointer);
+    while(top != NULL){
+        struct Reg* p = top->next;
+        free(top->regName);
+        free(top);
+        top = p;
     }
+    top = NULL;
 }
 
 void dump(const char* message) {
-    printf("--INIT DUMP -- %s", message);
+    printf("--INIT DUMP -- %s\n", message);
     struct Reg* p = top;
     while(p != NULL){
-        printf("0x%x Line: %d, Name: %s, Type: %s\n", (int)p, p->lineOfDeclaration, p->regName, p->typeReg==NULL?"·":p->typeReg->regName);
+        printf("%p Line: %d, Name: %s, Type: %s\n", p, p->lineOfDeclaration, p->regName, p->typeReg==NULL?"·":p->typeReg->regName);
         p = p->next;
     }
 }

@@ -1,6 +1,7 @@
 %{
 #include "parser.tab.h"
 #include <stdio.h>
+#include <string.h>
 %}
 %option yylineno
 
@@ -13,7 +14,7 @@ string \"[^\"\n]*\"
 
 %%
 [ \n\t]                   
-{comment}               return COMMENT;
+{comment}               
 ,                       return COMMA;
 ;                       return SEMICOLON;
 =                       return ASSIGNMENT;
@@ -54,11 +55,11 @@ printf                  return PRINTF;
 &&                      return AND;
 \|\|                    return OR;
 !                       return NEGATOR;
-{nombre}                return IDENTIFIER;
-{character}             return CHAR_VALUE;
-{string}                return STRING_VALUE;
-{integer}               return INT_VALUE;
-{floating}              return FLOAT_VALUE;
+{nombre}                { yylval.string = strdup(yytext); return IDENTIFIER; }
+{character}             { yylval.character = strdup(yytext)[1]; return CHAR_VALUE;}
+{string}                { yylval.string = strdup(yytext); return STRING_VALUE; }
+{integer}               { yylval.integer = atoi(yytext); return INT_VALUE; }
+{floating}              { yylval.real = atof(yytext); return FLOAT_VALUE; }
 .                       return ERROR;
 %%
 

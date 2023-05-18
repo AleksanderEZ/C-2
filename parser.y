@@ -9,44 +9,56 @@ void yyerror(char*);
 
 enum RegType variableSwitch = globalVariable;
 
+struct Reg* voidType;
 void initST() {
-  newReg("void", type, NULL, NULL);
-  newReg("int", type, NULL, NULL);
-  newReg("float", type, NULL, NULL);
-  newReg("char", type, NULL, NULL);
+  newReg("void", type, NULL, 0);
+  voidType = getTop();
+  newReg("int", type, NULL, 0);
+  newReg("float", type, NULL, 0);
+  newReg("char", type, NULL, 0);
 }
 
-void declaration(char* type, char* name, int line) {
-  struct Reg* t = searchRegType($1, type);
-  if (t != NULL || t == voidp) yyerror("Type does not exist");
+void declaration(char* typeName, char* name, int line) {
+  struct Reg* t = searchRegType(typeName, type);
+  if (t != NULL || t == voidType) yyerror("Type does not exist");
   newReg(name, variableSwitch, t, line);
 }
 
-void functionDeclarion(char* type, char* name, int line) {
-  struct Reg* t = searchRegType($1, type);
-  if (t != NULL || t == voidp) yyerror("Type does not exist");
-  char* functionName = strtok(name, "(");
-  newReg(functionName, function, t, line);
+void functionDeclaration(char* typeName, char* name, int line) {
+  struct Reg* t = searchRegType(typeName, type);
+  if (t != NULL) yyerror("Type does not exist");
+  //char* functionName = strtok(name, "(");
+  newReg(name, function, t, line);
 }
 
 void checkFunExists(char* name) {
   if (searchRegType(name, function) == NULL) yyerror("Function has not been declared");
 }
 
-void checkVarExists() {
+void checkVarExists(char* name) {
   if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL) yyerror("Variable has not been declared");
 }
 %}
 
-%union {float real; int integer; char characater; char* string}
-%token COMMENT IDENTIFIER ERROR
+%union {float real; int integer; char character; char* string}
+%token <string> IDENTIFIER
 %token <string> STRING_VALUE
-%token <integer> INT_VALUE 
-%token <real> FLOAT_VALUE 
+%token <string> SIZEOF
+%token <string> MALLOC
+%token <string> PRINTF
+%token <integer> INT_VALUE
+%token <real> FLOAT_VALUE
 %token <character> CHAR_VALUE
-%token ADDITION INCREMENT SUBTRACTION DECREMENT DIVISION ASTERISK AMPERSAND MODULUS EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS AND OR NEGATOR
+%token <string> INT
+%token <string> CHAR
+%token <string> FLOAT
+%token <string> VOID
+%token ADDITION INCREMENT SUBTRACTION DECREMENT DIVISION MODULUS EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS AND OR NEGATOR ASTERISK AMPERSAND
 %token COMMA SEMICOLON ASSIGNMENT OPEN_CURLY CLOSE_CURLY OPEN_PARENTHESIS CLOSE_PARENTHESIS OPEN_SQUARE CLOSE_SQUARE
-%token INT CHAR FLOAT VOID WHILE FOR BREAK CONTINUE RETURN IF ELSE SIZEOF MALLOC PRINTF
+%token WHILE FOR BREAK CONTINUE RETURN IF ELSE ERROR
+
+%type <string> type
+%type <string> function_subheader
 
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
@@ -72,7 +84,7 @@ instruction
 simple_instruction_type
   : 
   | simple_declaration 
-  | function_call 
+  | expression 
   | assignment 
   | return 
   | BREAK 
@@ -80,7 +92,7 @@ simple_instruction_type
   ;
 
 simple_declaration
-  : type IDENTIFIER { declaration($1, $2, yylineno) }
+  : type IDENTIFIER { declaration($1, $2, yylineno); } 
   | type assignment
   | array_declaration
   ;
@@ -91,7 +103,7 @@ complex_instruction_type
   ;
 
 instruction_block
-  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY {dump($2); closeBlock(); variableSwitch = globalVariable}
+  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY {dump("End of block"); closeBlock(); variableSwitch = globalVariable; }
   ;
 
 control
@@ -191,13 +203,13 @@ expression
   ;
 
 function_call
-  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); argumentsDeclaration()}
+  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); }
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); }
-  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists($1); }
-  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { checkFunExists($1); }
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists($1); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { checkFunExists($1); }
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { checkFunExists($1); }
+  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists("malloc"); }
+  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { checkFunExists("sizeof"); }
+  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists("printf"); }
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { checkFunExists("printf"); }
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { checkFunExists("printf"); }
   ;
 
 arguments
@@ -248,14 +260,10 @@ array_index
   ;
 
 type
-  : pointer
-  | INT
-  | CHAR
-  | FLOAT
-  ;
-
-pointer
-  : ASTERISK type
+  : type ASTERISK { char* pointer = malloc(8*sizeof(char)); pointer = strdup($1); strcat(pointer, "*"); newReg(pointer, type, NULL, yylineno); $$ = pointer; }
+  | INT { $$ = "int";}
+  | CHAR { $$ = "char";}
+  | FLOAT { $$ = "float";}
   ;
 
 value
@@ -272,6 +280,7 @@ int main(int argc, char** argv) {
   dump("Initial ST");
   yyparse();
   dump("Final ST");
+  clear("");
 }
 
 void yyerror(char* message) {
