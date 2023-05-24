@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "symbol_table.h"
-#include "Qlib.h"
+#include "Q/Qlib.h"
 
 extern FILE* yyin;
 extern int yylineno;
@@ -89,7 +89,10 @@ void checkVarExists(char* name) {
 %left ASTERISK DIVISION MODULUS
 %left OPEN_PARENTHESIS CLOSE_PARENTHESIS
 
-%% 
+%%
+
+raiz: {} program {};
+
 program
   : 
   | program instruction 
@@ -229,11 +232,12 @@ expression
 function_call
   : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); }
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); }
-  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists("malloc"); }
-  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { checkFunExists("sizeof"); }
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { label++; checkFunExists("printf"); fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tGT(putf_);\nL %d", label);}
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { label++; checkFunExists("printf"); fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$4;\n\tGT(putf_);\nL %d", label);}
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { label++; checkFunExists("printf"); fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$4;\n\tGT(putf_);\nL %d", label); }
+  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS {  }
+  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS {  }
+  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tGT(putf_);\nL %d", label);}
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$5;\n\tGT(putf_);\nL %d", label);}
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$5;\n\tGT(putf_);\nL %d", label); }
+  | PRINTF OPEN_PARENTHESIS INT_VALUE CLOSE_PARENTHESIS { label++; printf("STAT(0)\nSTR(0x11ff1, \"Hola mundo %%d\\n\");\nCODE(0)\n\tR0=%d;\n\tR1=0x%x;\n\tR2=%d;\n\tGT(putf_);\nL %d:", label, 0x11ff1, $3, label); fprintf(obj, "STAT(0)\nSTR(0x11ff1, \"Hola mundo %%d\\n\");\nCODE(0)\n\tR0=%d;\n\tR1=0x%x;\n\tR2=%d;\n\tGT(putf_);\nL %d:", label, 0x11ff1, $3, label); }
   ;
 
 arguments
@@ -300,6 +304,7 @@ value
 
 int main(int argc, char** argv) {
   if (argc>1) yyin=fopen(argv[1],"r");
+  if (argc>1) obj = fopen(argv[2], "w");
   initST();
   dump("Initial ST");
   yyparse();

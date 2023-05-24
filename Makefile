@@ -1,22 +1,22 @@
 TESTFILE = a
-OBJECTFILE = obj.q.c
+OBJECTFILE = Q/obj.q.c
 IQ = Q/IQ.o
 
-all: $(OBJECTFILE) qmachine
-	./qmachine $(OBJECTFILE)
+all: $(OBJECTFILE) Q/qmachine
+	Q/qmachine $(OBJECTFILE)
 
-debug: c2 $(OBJECTFILE) qmachine
+debug: c2 Q/qmachine
 	gdb -q c2 -ex 'run $(TESTFILE) $(OBJECTFILE)'
-	less $(O)
-	./qmachine -g $(OBJECTFILE)
+	less $(OBJECTFILE)
+	Q/qmachine -g $(OBJECTFILE)
 
 qmachine: $(IQ) Q/Qlib.c Q/Qlib.h Q/Q.h
-	gcc -o qmachine $(IQ) Q/Qlib.c
+	gcc -no-pie -o Q/qmachine $(IQ) Q/Qlib.c
 
 obj: $(OBJECTFILE)
-	less $(O)
+	less $(OBJECTFILE)
 
-$(O): c2
+$(OBJECTFILE): c2
 	./c2 $(TESTFILE) $(OBJECTFILE)
 
 clean:
