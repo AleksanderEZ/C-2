@@ -2,12 +2,16 @@
 #include <stdio.h>
 #include <string.h>
 #include "symbol_table.h"
-extern FILE *yyin;
+#include "Qlib.h"
+
+extern FILE* yyin;
 extern int yylineno;
 int yydebug = 1;
 void yyerror(char*);
 
 enum RegType variableSwitch = globalVariable;
+FILE* obj;
+int label = 0;
 
 struct Reg* voidType;
 void initST() {
@@ -143,7 +147,7 @@ for_header
 first_part_for
   : 
   | arithmetical_assignment 
-  | type IDENTIFIER ASSIGNMENT expression { variableSwitch = localVariable; declaration($1, $2, yylineno); variableSwitch = globalVariable;}
+  | type IDENTIFIER ASSIGNMENT expression { variableSwitch = localVariable; declaration($1, $2, yylineno); variableSwitch = globalVariable; }
   ;
 
 third_part_for
@@ -227,9 +231,9 @@ function_call
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); }
   | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists("malloc"); }
   | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { checkFunExists("sizeof"); }
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { checkFunExists("printf"); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { checkFunExists("printf"); }
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { checkFunExists("printf"); }
+  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { label++; checkFunExists("printf"); fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tGT(putf_);\nL %d", label);}
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { label++; checkFunExists("printf"); fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$4;\n\tGT(putf_);\nL %d", label);}
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { label++; checkFunExists("printf"); fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$4;\n\tGT(putf_);\nL %d", label); }
   ;
 
 arguments

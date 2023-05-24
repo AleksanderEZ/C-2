@@ -1,7 +1,23 @@
-# make F=n.x	[genera] y ejecuta sobre n.x; via stdin: make<n.x
+TESTFILE = a
+OBJECTFILE = obj.q.c
+IQ = Q/IQ.o
 
-all: c2 $(F)
-	./c2 $(F)
+all: $(OBJECTFILE) qmachine
+	./qmachine $(OBJECTFILE)
+
+debug: c2 $(OBJECTFILE) qmachine
+	gdb -q c2 -ex 'run $(TESTFILE) $(OBJECTFILE)'
+	less $(O)
+	./qmachine -g $(OBJECTFILE)
+
+qmachine: $(IQ) Q/Qlib.c Q/Qlib.h Q/Q.h
+	gcc -o qmachine $(IQ) Q/Qlib.c
+
+obj: $(OBJECTFILE)
+	less $(O)
+
+$(O): c2
+	./c2 $(TESTFILE) $(OBJECTFILE)
 
 clean:
 	rm -f lex.yy.c parser.tab.* parser.output c2
