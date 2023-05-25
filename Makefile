@@ -7,10 +7,9 @@ all: $(OBJECTFILE) Q/qmachine
 
 debug: c2 Q/qmachine
 	gdb -q c2 -ex 'run $(TESTFILE) $(OBJECTFILE)'
-	less $(OBJECTFILE)
 	Q/qmachine -g $(OBJECTFILE)
 
-qmachine: $(IQ) Q/Qlib.c Q/Qlib.h Q/Q.h
+Q/qmachine: $(IQ) Q/Qlib.c Q/Qlib.h Q/Q.h
 	gcc -no-pie -o Q/qmachine $(IQ) Q/Qlib.c
 
 obj: $(OBJECTFILE)

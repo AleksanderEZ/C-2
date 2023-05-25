@@ -1,6 +1,8 @@
 %{
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+
 #include "symbol_table.h"
 #include "Q/Qlib.h"
 
@@ -15,11 +17,20 @@ int label = 0;
 
 struct Reg* voidType;
 void initST() {
-  newReg("void", type, NULL, 0);
+  char* voidString = malloc(sizeof(char)*5);
+  voidString = "void";
+  char* intString = malloc(sizeof(char)*5);
+  intString = "int";
+  char* floatString = malloc(sizeof(char)*5);
+  floatString = "float";
+  char* charString = malloc(sizeof(char)*5);
+  charString = "char";
+
+  newReg(voidString, type, NULL, 0);
   voidType = getTop();
-  newReg("int", type, NULL, 0);
-  newReg("float", type, NULL, 0);
-  newReg("char", type, NULL, 0);
+  newReg(intString, type, NULL, 0);
+  newReg(floatString, type, NULL, 0);
+  newReg(charString, type, NULL, 0);
 }
 
 void declaration(char* typeName, char* name, int line) {
@@ -237,7 +248,6 @@ function_call
   | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tGT(putf_);\nL %d", label);}
   | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$5;\n\tGT(putf_);\nL %d", label);}
   | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$5;\n\tGT(putf_);\nL %d", label); }
-  | PRINTF OPEN_PARENTHESIS INT_VALUE CLOSE_PARENTHESIS { label++; printf("STAT(0)\nSTR(0x11ff1, \"Hola mundo %%d\\n\");\nCODE(0)\n\tR0=%d;\n\tR1=0x%x;\n\tR2=%d;\n\tGT(putf_);\nL %d:", label, 0x11ff1, $3, label); fprintf(obj, "STAT(0)\nSTR(0x11ff1, \"Hola mundo %%d\\n\");\nCODE(0)\n\tR0=%d;\n\tR1=0x%x;\n\tR2=%d;\n\tGT(putf_);\nL %d:", label, 0x11ff1, $3, label); }
   ;
 
 arguments
