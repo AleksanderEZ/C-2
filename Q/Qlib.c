@@ -3,6 +3,7 @@
 // Se permite su modificacion, en cuyo caso ha de recompilarse IQ (ver Qman.txt)
 
 // Conservar la siguiente l�nea
+// #define USEextern
 #include "Q.h"
 
 

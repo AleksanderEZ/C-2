@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "symbol_table.h"
+#include "code_generation.h"
 #include "Q/Qlib.h"
 
 extern FILE* yyin;
@@ -12,10 +13,8 @@ int yydebug = 1;
 void yyerror(char*);
 
 enum RegType variableSwitch = globalVariable;
-FILE* obj;
-int label = 0;
-
 struct Reg* voidType;
+
 void initST() {
   char* voidString = strdup("void");
   char* intString = strdup("int");
@@ -51,6 +50,7 @@ void functionDeclaration(char* typeName, char* name, int line) {
 
   char* tokens[10];
   char* token = strtok(NULL, ",");
+  if (token == NULL) return;
   char* definitiveToken = strdup(token);
   int i = 0;
   while (token != NULL) {
@@ -105,6 +105,10 @@ void checkVarExists(char* name) {
 %type <string> type
 %type <string> function_subheader
 %type <string> parameters
+%type <string> arguments
+
+%type <string> expression
+%type <string> function_call
 
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
@@ -113,7 +117,7 @@ void checkVarExists(char* name) {
 
 %%
 
-raiz: {} program {};
+raiz: { qInit(); } program { qEnd(); };
 
 program
   : 
@@ -228,11 +232,11 @@ arithmetical_assignment
   ;
 
 expression
-  : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS
-  | value
+  : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { $$ = $2; }
+  | value { $$ = strdup("dummyValue"); }
   | function_call
   | IDENTIFIER array_index { checkVarExists($1); }
-  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression
+  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
   | IDENTIFIER { checkVarExists($1); }
   | AMPERSAND IDENTIFIER { checkVarExists($2); }
   | ASTERISK IDENTIFIER { checkVarExists($2); }
@@ -252,18 +256,18 @@ expression
   ;
 
 function_call
-  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); }
-  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); }
-  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS {  }
-  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS {  }
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tGT(putf_);\nL %d", label);}
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$5;\n\tGT(putf_);\nL %d", label);}
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { label++; fprintf(obj, "\tR0=label;\n\tR1=$3;\n\tR2=$5;\n\tGT(putf_);\nL %d", label); }
+  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); qCallFunction($1, $3); }
+  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); qCallFunctionNoArgs($1); }
+  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
+  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
+  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qPrint($3); }
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5);}
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); }
   ;
 
 arguments
-  : arguments COMMA expression
-  | expression 
+  : arguments COMMA expression { char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); $$ = pointer;}
+  | expression { char* pointer = strdup($1); $$ = pointer;}
   ;
 
 return
@@ -281,17 +285,17 @@ value_list
   ;
 
 function_declaration
-  : function_header instruction_block
+  : function_header { dummyReg(); } instruction_block
   ;
 
 function_header
   : type function_subheader { functionDeclaration($1, $2, yylineno); }
-  | VOID function_subheader { functionDeclaration($1, $2, yylineno); }
+  | VOID function_subheader { functionDeclaration(strdup("void"), $2, yylineno); }
   ;
 
 function_subheader
   : IDENTIFIER OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS { char* pointer = malloc(400 * sizeof(char)); strcat(pointer, $1); strcat(pointer, "("); strcat(pointer, $3); $$ = pointer; }
-  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS
+  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { char* pointer = malloc(400 * sizeof(char)); strcat(pointer, $1); strcat(pointer, "("); $$ = pointer; }
   ;
 
 parameters
@@ -325,7 +329,7 @@ value
 
 int main(int argc, char** argv) {
   if (argc>1) yyin=fopen(argv[1],"r");
-  if (argc>1) obj = fopen(argv[2], "w");
+  if (argc>1) setObjFile(argv[2]);
   initST();
   dump("Initial ST");
   yyparse();

@@ -1,0 +1,11 @@
+void newLabel();
+void setObjFile(char* objPath);
+void qInit();
+void qEnd();
+void qCallFunction(char* function, char* arguments);
+void qCallFunctionNoArgs(char* function);
+void qMalloc(char* expression);
+void qSizeOf(char* expression);
+void qPrint(char* expression);
+void qPrintExplicitFormat(char* formatString, char* arguments);
+void qPrintImplicitFormat(char* identifier, char* arguments);
