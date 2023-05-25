@@ -16,7 +16,7 @@ struct Reg* getTop() {
 }
 
 struct Reg* searchRegType(char* regName, enum RegType regType) {
-    struct Reg *p = search(regName); 
+    struct Reg *p = search(regName);
     if(p != NULL && p->type==regType) return p; else return NULL;
 }
 
@@ -56,21 +56,28 @@ void* getRegValue(char* regName, enum RegType localGlobal) {
 }
 
 void closeBlock() {
-    while(top != NULL && top->type != function) {
+    dump("--CLOSING BLOCK--\n");
+    while(top != NULL && top->type != function && strcmp(top->regName, "openBlock") != 0) {
         struct Reg *p = top->next;
-        free(top->regName);
-        free(top->value);
+        if (top->regName != NULL) free(top->regName);
+        if (top->value != NULL) free(top->value);
         free(top); 
         top=p;
     }
+    struct Reg *p = top->next;
+    if (top->regName != NULL) free(top->regName);
+    if (top->value != NULL) free(top->value);
+    free(top); 
+    top=p;
 }
 
 void clear() {
-    printf("--INIT FREE --");
+    printf("--INIT FREE --\n");
     while(top != NULL){
         struct Reg* p = top->next;
-        free(top->regName); 
-        free(top->value);
+        printf("Freeing %s\n", top->regName);
+        if (top->regName != NULL) free(top->regName); 
+        if (top->value != NULL) free(top->value);
         free(top); 
         top = p;
     }
@@ -81,7 +88,7 @@ void dump(const char* message) {
     printf("--INIT DUMP -- %s\n", message);
     struct Reg* p = top;
     while(p != NULL){
-        printf("%p Line: %d, Name: %s, Type: %s, Value address: %p\n", p, p->lineOfDeclaration, p->regName, p->typeReg==NULL?"·":p->typeReg->regName, p->value);
+        printf("%p Line: %d, Name: %s (%d), Type: %s, Value address: %p\n", p, p->lineOfDeclaration, p->regName, p->type, p->typeReg==NULL?"·":p->typeReg->regName, p->value);
         p = p->next;
     }
 }

@@ -17,14 +17,10 @@ int label = 0;
 
 struct Reg* voidType;
 void initST() {
-  char* voidString = malloc(sizeof(char)*5);
-  voidString = "void";
-  char* intString = malloc(sizeof(char)*5);
-  intString = "int";
-  char* floatString = malloc(sizeof(char)*5);
-  floatString = "float";
-  char* charString = malloc(sizeof(char)*5);
-  charString = "char";
+  char* voidString = strdup("void");
+  char* intString = strdup("int");
+  char* floatString = strdup("float");
+  char* charString = strdup("char");
 
   newReg(voidString, type, NULL, 0);
   voidType = getTop();
@@ -33,35 +29,50 @@ void initST() {
   newReg(charString, type, NULL, 0);
 }
 
+void dummyReg() {
+  char* openBlock;
+  variableSwitch = localVariable;
+  openBlock = strdup("openBlock");
+  newReg(openBlock, function, voidType, yylineno);
+}
+
 void declaration(char* typeName, char* name, int line) {
   struct Reg* t = searchRegType(typeName, type);
-  if (t != NULL || t == voidType) yyerror("Type does not exist");
+  if (t == NULL || t == voidType) yyerror("Type does not exist or invalid type");
   newReg(name, variableSwitch, t, line);
 }
 
 void functionDeclaration(char* typeName, char* name, int line) {
   struct Reg* t = searchRegType(typeName, type);
-  if (t != NULL) yyerror("Type does not exist");
+  if (t == NULL) yyerror("Type does not exist");
   char* functionName = strtok(name, "(");
-  newReg(functionName, function, t, line);
+  char* definitiveFunctionName = strdup(functionName);
+  newReg(definitiveFunctionName, function, t, line);
 
   char* tokens[10];
   char* token = strtok(NULL, ",");
+  char* definitiveToken = strdup(token);
   int i = 0;
   while (token != NULL) {
-    tokens[i] = token;
-    //printf("%s\n", tokens[i]);
+    definitiveToken = strdup(token);
+    tokens[i] = definitiveToken;
+    printf("%s\n", tokens[i]);
     i++;
     token = strtok(NULL, ",");
   }
 
   variableSwitch = localVariable;
-  char* type = malloc(sizeof(char) * 10);
-  char* parameterName = malloc(sizeof(char) * 50);
+  char* type;
+  char* definitiveType;
+  char* parameterName;
+  char* definitiveParameterName;
   for(int j = 0; j < i; j++){
     type = strtok(tokens[j], " ");
     parameterName = strtok(NULL, " ");
-    declaration(type, parameterName, line);
+    definitiveType = strdup(type);
+    definitiveParameterName = strdup(parameterName);
+    declaration(definitiveType, definitiveParameterName, line);
+    free(tokens[j]);
   }
 }
 
@@ -141,7 +152,7 @@ complex_instruction_type
   ;
 
 instruction_block
-  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY {dump("End of block"); closeBlock(); variableSwitch = globalVariable; }
+  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY {closeBlock(); variableSwitch = globalVariable; }
   ;
 
 control
@@ -155,7 +166,7 @@ for
   ;
 
 for_header
-  : FOR OPEN_PARENTHESIS first_part_for SEMICOLON condition SEMICOLON third_part_for CLOSE_PARENTHESIS
+  : FOR { dummyReg(); } OPEN_PARENTHESIS first_part_for SEMICOLON condition SEMICOLON third_part_for CLOSE_PARENTHESIS
   ;
 
 first_part_for
@@ -174,14 +185,14 @@ while
   ;
 
 while_header
-  : WHILE OPEN_PARENTHESIS condition CLOSE_PARENTHESIS
+  : WHILE { dummyReg(); } OPEN_PARENTHESIS condition CLOSE_PARENTHESIS
   ;
 
 if
   : if_header simple_instruction_type SEMICOLON
   | if_header simple_instruction_type SEMICOLON else
   | if_header instruction_block
-  | if_header instruction_block else
+  | if_header instruction_block else 
   ;
 
 if_header
@@ -320,8 +331,10 @@ int main(int argc, char** argv) {
   yyparse();
   dump("Final ST");
   clear();
+  dump("ST Clean?");
 }
 
 void yyerror(char* message) {
   printf("Error in line %i: %s \n", yylineno, message);
+  exit(-1);
 }
