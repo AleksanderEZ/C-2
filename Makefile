@@ -1,16 +1,16 @@
 TESTFILE = src/PrintHelloWorld.c2
-OBJECTFILE = Q/obj.q.c
-IQ = Q/IQ.o
+OBJECTFILE = obj.q.c
+IQ = IQ.o
 
-all: $(OBJECTFILE) Q/qmachine
-	Q/qmachine $(OBJECTFILE)
+all: $(OBJECTFILE) qmachine
+	./qmachine $(OBJECTFILE)
 
-debug: c2 Q/qmachine
+debug: c2 qmachine
 	gdb -q c2 -ex 'run $(TESTFILE) $(OBJECTFILE)'
-	Q/qmachine -g $(OBJECTFILE)
+	./qmachine -g $(OBJECTFILE)
 
-Q/qmachine: $(IQ) Q/Qlib.c Q/Qlib.h Q/Q.h
-	gcc -no-pie -o Q/qmachine $(IQ) Q/Qlib.c
+qmachine: $(IQ) Qlib.c Qlib.h Q.h
+	gcc -no-pie -o qmachine $(IQ) Qlib.c
 
 obj: $(OBJECTFILE)
 	less $(OBJECTFILE)

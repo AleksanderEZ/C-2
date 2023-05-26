@@ -5,7 +5,7 @@
 
 #include "symbol_table.h"
 #include "code_generation.h"
-#include "Q/Qlib.h"
+#include "Qlib.h"
 
 extern FILE* yyin;
 extern int yylineno;

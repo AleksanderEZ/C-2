@@ -1,13 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "code_generation.h"
 #include "symbol_table.h"
 
 FILE* obj;
+int lineSizeLimit = 100;
 int label = 0;
 int atLabel = 0;
 int statCodeCounter = 0;
+int stackBase = 0x11fff;
+int stackTop = 0x11fff;
+
+void pushStack(int bytes) {
+    stackTop = stackTop - (bytes - 1);
+}
 
 void newLabel() {
     fprintf(obj, "L %d:", label);
@@ -26,8 +34,9 @@ void qInit() {
 
 void qEnd() {
     if (atLabel == 1) {
-        fprintf(obj, "\nEND");
-        return;
+        fprintf(obj, "\tGT(__fin);\n");
+    } else {
+        fprintf(obj, "\t\tGT(__fin);\n");
     }
     fprintf(obj, "END");
 }
@@ -58,16 +67,24 @@ void qSizeOf(char* expression) {
 }
 
 void qPrint(char* expression) {
-    // STAT
-    // STR
-    // CODE
+    char* line = malloc(sizeof(char) * lineSizeLimit);
 
-    char* line = malloc(sizeof(char) * 100);
-    snprintf(line, sizeof(char) * 100, "R0=%d;", label);
+    snprintf(line, sizeof(char) * lineSizeLimit, "STAT(%d)", statCodeCounter);
     qLine(line);
 
-    int address = 0x11ff6; //example
-    snprintf(line, sizeof(char) * 100, "R1=0x%x;", address);
+    pushStack(strlen(expression)+1);
+    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,\"%s\"); ", stackTop, expression);
+    qLine(line);
+    
+    snprintf(line, sizeof(char) * lineSizeLimit, "CODE(%d)", statCodeCounter);
+    qLine(line);
+
+    statCodeCounter++;
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
+    qLine(line);
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", stackTop);
     qLine(line);
 
     qLine("GT(putf_);");
