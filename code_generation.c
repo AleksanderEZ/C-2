@@ -9,17 +9,24 @@ FILE* obj;
 int lineSizeLimit = 100;
 int label = 0;
 int atLabel = 0;
+int continueLabel;
+int breakLabel;
 int statCodeCounter = 0;
 int stackBase = 0x11fff;
 int stackTop = 0x11fff;
+char* line;
+
 
 void pushStack(int bytes) {
     stackTop = stackTop - (bytes - 1);
 }
 
+void advanceLabel() {
+    label++;
+}
+
 void newLabel() {
     fprintf(obj, "L %d:", label);
-    label++;
     atLabel = 1;
 }
 
@@ -28,8 +35,10 @@ void setObjFile(char* objPath) {
 }
 
 void qInit() {
+    line = malloc(sizeof(char) * lineSizeLimit);
     fprintf(obj, "#include \"Q.h\"\n\nBEGIN\n");
     newLabel();
+    advanceLabel();
 }
 
 void qEnd() {
@@ -39,9 +48,10 @@ void qEnd() {
         fprintf(obj, "\t\tGT(__fin);\n");
     }
     fprintf(obj, "END");
+    free(line);
 }
 
-void qLine(char* line) {
+void qLine() {
     if (atLabel == 1) {
         fprintf(obj, "\t%s\n", line);
         atLabel = 0;
@@ -67,29 +77,27 @@ void qSizeOf(char* expression) {
 }
 
 void qPrint(char* expression) {
-    char* line = malloc(sizeof(char) * lineSizeLimit);
-
     snprintf(line, sizeof(char) * lineSizeLimit, "STAT(%d)", statCodeCounter);
-    qLine(line);
+    qLine();
 
-    pushStack(strlen(expression)+1);
+    pushStack(strlen(expression)+1); //strlen does not count /0
     snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,\"%s\"); ", stackTop, expression);
-    qLine(line);
+    qLine();
     
     snprintf(line, sizeof(char) * lineSizeLimit, "CODE(%d)", statCodeCounter);
-    qLine(line);
+    qLine();
 
     statCodeCounter++;
 
     snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
-    qLine(line);
+    qLine();
 
     snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", stackTop);
-    qLine(line);
+    qLine();
 
     qLine("GT(putf_);");
-    free(line);
     newLabel();
+    advanceLabel();
 }
 
 void qPrintExplicitFormat(char* formatString, char* arguments) {
@@ -98,4 +106,31 @@ void qPrintExplicitFormat(char* formatString, char* arguments) {
 
 void qPrintImplicitFormat(char* identifier, char* arguments) {
 
+}
+
+void qStartWhile() {
+    continueLabel = label;
+    newLabel();
+    advanceLabel();
+    breakLabel = label;
+    advanceLabel();
+}
+
+void qWhileCondition() {
+    snprintf(line, sizeof(char) * lineSizeLimit, "IF(!R1) GT(%d)", breakLabel);
+    qLine();
+}
+
+void qInstruction(char* instruction) {
+    snprintf(line, sizeof(char) * lineSizeLimit, instruction);
+    qLine();
+}
+
+void qFinishWhile() {
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d)", continueLabel);
+    qLine();
+    int auxLabel = label;
+    label = breakLabel;
+    newLabel();
+    label = auxLabel;
 }

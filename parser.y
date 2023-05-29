@@ -83,6 +83,39 @@ void checkFunExists(char* name) {
 void checkVarExists(char* name) {
   if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL) yyerror("Variable has not been declared");
 }
+
+int returnIncrement(char* name) {
+  checkIsInt(name);
+  int value = getRegValue(name, variableSwitch);
+  setRegValue(name, variableSwitch, value + 1);
+  return value;
+}
+
+int returnDecrement(char* name) {
+  checkIsInt(name);
+  int value = getRegValue(name, variableSwitch);
+  setRegValue(name, variableSwitch, value - 1);
+  return value;
+}
+
+int incrementReturn(char* name) {
+  checkIsInt(name);
+  int value = getRegValue(name, variableSwitch) + 1;
+  setRegValue(name, variableSwitch, value);
+  return value;
+}
+
+int decrementReturn(char* name) {
+  checkIsInt(name);
+  int value = getRegValue(name, variableSwitch) - 1;
+  setRegValue(name, variableSwitch, value);
+  return value;
+}
+
+void checkIsInt(char* name) {
+  struct Reg* variable = searchRegType("int", name);
+  if (variable == NULL) yyerror("Variable is not of type int");
+}
 %}
 
 %union {float real; int integer; char character; char* string}
@@ -185,11 +218,11 @@ third_part_for
   ;
 
 while
-  : while_header instruction
+  : while_header instruction { qFinishWhile(); }
   ;
 
 while_header
-  : WHILE { dummyReg(); } OPEN_PARENTHESIS condition CLOSE_PARENTHESIS
+  : WHILE { dummyReg(); } OPEN_PARENTHESIS { qStartWhile(); } condition CLOSE_PARENTHESIS
   ;
 
 if
@@ -224,7 +257,7 @@ condition
 
 assignment
   : arithmetical_assignment
-  | IDENTIFIER array_index ASSIGNMENT expression { checkVarExists($1); }
+  | IDENTIFIER array_index ASSIGNMENT expression { checkVarExists($1); setRegValue(); }
   ;
 
 arithmetical_assignment
@@ -233,25 +266,25 @@ arithmetical_assignment
 
 expression
   : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { $$ = $2; }
-  | value { $$ = strdup("dummyValue"); }
+  | value
   | function_call
   | IDENTIFIER array_index { checkVarExists($1); }
   | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
-  | IDENTIFIER { checkVarExists($1); }
-  | AMPERSAND IDENTIFIER { checkVarExists($2); }
-  | ASTERISK IDENTIFIER { checkVarExists($2); }
-  | expression ADDITION expression
-  | expression SUBTRACTION expression 
-  | expression DIVISION expression 
-  | expression ASTERISK expression 
-  | expression MODULUS expression
-  | IDENTIFIER INCREMENT { checkVarExists($1); }
+  | IDENTIFIER { checkVarExists($1); $$ = getRegValue($1, variableSwitch); }
+  | AMPERSAND IDENTIFIER { checkVarExists($2); /**/ }
+  | ASTERISK IDENTIFIER { checkVarExists($2); /**/ }
+  | expression ADDITION expression { $$ = $1 + $3; }
+  | expression SUBTRACTION expression { $$ = $1 + $3; }
+  | expression DIVISION expression { $$ = $1 / $3; }
+  | expression ASTERISK expression { $$ = $1 * $3; }
+  | expression MODULUS expression { $$ = $1 % $3; }
+  | IDENTIFIER INCREMENT { checkVarExists($1); $$ = returnIncrement($1); }
   | IDENTIFIER array_index INCREMENT { checkVarExists($1); }
-  | IDENTIFIER DECREMENT { checkVarExists($1); }
+  | IDENTIFIER DECREMENT { checkVarExists($1); $$ = returnDecrement($1);}
   | IDENTIFIER array_index DECREMENT { checkVarExists($1); }
-  | INCREMENT IDENTIFIER { checkVarExists($2); }
+  | INCREMENT IDENTIFIER { checkVarExists($2); $$ = incrementReturn($1);}
   | INCREMENT IDENTIFIER array_index { checkVarExists($2); }
-  | DECREMENT IDENTIFIER { checkVarExists($2); }
+  | DECREMENT IDENTIFIER { checkVarExists($2); $$ = decrementReturn($1);}
   | DECREMENT IDENTIFIER array_index { checkVarExists($2); }
   ;
 
@@ -284,6 +317,15 @@ value_list
   | value_list COMMA expression
   ;
 
+array_declaration
+  : type IDENTIFIER array_index { declaration($1, $2, yylineno); }
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); }
+  ;
+
+array_index
+  : OPEN_SQUARE expression CLOSE_SQUARE
+  ;
+
 function_declaration
   : function_header { dummyReg(); } instruction_block
   ;
@@ -301,15 +343,6 @@ function_subheader
 parameters
   : type IDENTIFIER { char* pointer = malloc(50 * sizeof(char)); strcat(pointer, $1); strcat(pointer, " "); strcat(pointer, $2); $$ = pointer; }
   | parameters COMMA type IDENTIFIER { char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); strcat(pointer, " "), strcat(pointer, $4); $$ = pointer;}
-  ;
-
-array_declaration
-  : type IDENTIFIER array_index { declaration($1, $2, yylineno); }
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); }
-  ;
-
-array_index
-  : OPEN_SQUARE expression CLOSE_SQUARE
   ;
 
 type
