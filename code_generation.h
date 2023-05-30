@@ -1,6 +1,9 @@
 void advanceLabel();
 void newLabel();
 void setObjFile(char* objPath);
+int qAssignRegister();
+void qFreeRegister(int reg);
+void qFreeRegisters();
 void qInit();
 void qEnd();
 void qLine();
@@ -15,3 +18,8 @@ void qStartWhile();
 void qWhileCondition();
 void qInstruction(char* instruction);
 void qFinishWhile();
+void qLoadVar(int reg, char* identifier, enum RegType regType);
+void qLoadIntValue(int reg, int value);
+void qLoadFloatValue(int reg, float value);
+void qLoadCharValue(int reg, char value);
+void qLoadStringValue(int reg, char* value);

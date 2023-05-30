@@ -84,34 +84,6 @@ void checkVarExists(char* name) {
   if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL) yyerror("Variable has not been declared");
 }
 
-int returnIncrement(char* name) {
-  checkIsInt(name);
-  int value = getRegValue(name, variableSwitch);
-  setRegValue(name, variableSwitch, value + 1);
-  return value;
-}
-
-int returnDecrement(char* name) {
-  checkIsInt(name);
-  int value = getRegValue(name, variableSwitch);
-  setRegValue(name, variableSwitch, value - 1);
-  return value;
-}
-
-int incrementReturn(char* name) {
-  checkIsInt(name);
-  int value = getRegValue(name, variableSwitch) + 1;
-  setRegValue(name, variableSwitch, value);
-  return value;
-}
-
-int decrementReturn(char* name) {
-  checkIsInt(name);
-  int value = getRegValue(name, variableSwitch) - 1;
-  setRegValue(name, variableSwitch, value);
-  return value;
-}
-
 void checkIsInt(char* name) {
   struct Reg* variable = searchRegType("int", name);
   if (variable == NULL) yyerror("Variable is not of type int");
@@ -140,8 +112,9 @@ void checkIsInt(char* name) {
 %type <string> parameters
 %type <string> arguments
 
-%type <string> expression
-%type <string> function_call
+%type <integer> expression
+%type <integer> value
+%type <integer> function_call
 
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
@@ -270,22 +243,14 @@ expression
   | function_call
   | IDENTIFIER array_index { checkVarExists($1); }
   | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
-  | IDENTIFIER { checkVarExists($1); $$ = getRegValue($1, variableSwitch); }
-  | AMPERSAND IDENTIFIER { checkVarExists($2); /**/ }
-  | ASTERISK IDENTIFIER { checkVarExists($2); /**/ }
-  | expression ADDITION expression { $$ = $1 + $3; }
-  | expression SUBTRACTION expression { $$ = $1 + $3; }
-  | expression DIVISION expression { $$ = $1 / $3; }
-  | expression ASTERISK expression { $$ = $1 * $3; }
-  | expression MODULUS expression { $$ = $1 % $3; }
-  | IDENTIFIER INCREMENT { checkVarExists($1); $$ = returnIncrement($1); }
-  | IDENTIFIER array_index INCREMENT { checkVarExists($1); }
-  | IDENTIFIER DECREMENT { checkVarExists($1); $$ = returnDecrement($1);}
-  | IDENTIFIER array_index DECREMENT { checkVarExists($1); }
-  | INCREMENT IDENTIFIER { checkVarExists($2); $$ = incrementReturn($1);}
-  | INCREMENT IDENTIFIER array_index { checkVarExists($2); }
-  | DECREMENT IDENTIFIER { checkVarExists($2); $$ = decrementReturn($1);}
-  | DECREMENT IDENTIFIER array_index { checkVarExists($2); }
+  | IDENTIFIER { checkVarExists($1); $$ = qAssignRegister(); qLoadVar($$, $1, variableSwitch); }
+  | AMPERSAND IDENTIFIER { checkVarExists($2); }
+  | ASTERISK IDENTIFIER { checkVarExists($2); }
+  | expression ADDITION expression { $$ = $1; qFreeRegister($$);}
+  | expression SUBTRACTION expression { $$ = $1; qFreeRegister($$);}
+  | expression DIVISION expression { $$ = $1; qFreeRegister($$);}
+  | expression ASTERISK expression { $$ = $1; qFreeRegister($$);}
+  | expression MODULUS expression { $$ = $1; qFreeRegister($$);}
   ;
 
 function_call
@@ -309,7 +274,7 @@ return
   ;
 
 array
-  : OPEN_CURLY value_list CLOSE_CURLY
+  : OPEN_CURLY value_list CLOSE_CURLY { $$ = $2 }
   ;
 
 value_list
@@ -318,12 +283,12 @@ value_list
   ;
 
 array_declaration
-  : type IDENTIFIER array_index { declaration($1, $2, yylineno); }
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); }
+  : type IDENTIFIER array_index { declaration($1, $2, yylineno); void* address = qReserveMemory($3); setRegValue($2, variableSwitch, address); }
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); void* address = qReserveArray($6); setRegValue($2, variableSwitch, address);}
   ;
 
 array_index
-  : OPEN_SQUARE expression CLOSE_SQUARE
+  : OPEN_SQUARE expression CLOSE_SQUARE { $$ = $2 }
   ;
 
 function_declaration
@@ -353,10 +318,10 @@ type
   ;
 
 value
-  : INT_VALUE 
-  | FLOAT_VALUE 
-  | CHAR_VALUE
-  | STRING_VALUE
+  : INT_VALUE { $$ = qAssignRegister(); qLoadIntValue($$, $1); }
+  | FLOAT_VALUE { $$ = qAssignRegister(); qLoadFloatValue($$, $1); }
+  | CHAR_VALUE { $$ = qAssignRegister(); qLoadCharValue($$, $1); }
+  | STRING_VALUE { $$ = qAssignRegister(); qLoadStringValue($$, $1); }
   ;
 %%
 

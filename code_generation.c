@@ -15,7 +15,7 @@ int statCodeCounter = 0;
 int stackBase = 0x11fff;
 int stackTop = 0x11fff;
 char* line;
-
+int* registers;
 
 void pushStack(int bytes) {
     stackTop = stackTop - (bytes - 1);
@@ -34,7 +34,33 @@ void setObjFile(char* objPath) {
     obj = fopen(objPath, "w");
 }
 
+int qAssignRegister() {
+    int reg;
+    for (int i = 0; i < 7; i++) {
+        if(registers[i] == 0) {
+            reg = i;
+            registers[i] = 1;
+            break;
+        }
+    }
+    return reg;
+}
+
+void qFreeRegister(int reg) {
+    registers[reg] = 0;
+}
+
+void qFreeRegisters() {
+    for (int i = 0; i < 7; i++) {
+        registers[i] = 0;
+    }
+}
+
 void qInit() {
+    registers = malloc(sizeof(int) * 7);
+    for (int i = 0; i < 7; i++) {
+        registers[i] = 0;
+    }
     line = malloc(sizeof(char) * lineSizeLimit);
     fprintf(obj, "#include \"Q.h\"\n\nBEGIN\n");
     newLabel();
@@ -49,6 +75,12 @@ void qEnd() {
     }
     fprintf(obj, "END");
     free(line);
+    free(registers);
+}
+
+void qInstruction(char* instruction) {
+    snprintf(line, sizeof(char) * lineSizeLimit, instruction);
+    qLine();
 }
 
 void qLine() {
@@ -95,7 +127,8 @@ void qPrint(char* expression) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", stackTop);
     qLine();
 
-    qLine("GT(putf_);");
+    qInstruction("GT(putf_);");
+
     newLabel();
     advanceLabel();
 }
@@ -121,10 +154,7 @@ void qWhileCondition() {
     qLine();
 }
 
-void qInstruction(char* instruction) {
-    snprintf(line, sizeof(char) * lineSizeLimit, instruction);
-    qLine();
-}
+
 
 void qFinishWhile() {
     snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d)", continueLabel);
@@ -133,4 +163,73 @@ void qFinishWhile() {
     label = breakLabel;
     newLabel();
     label = auxLabel;
+}
+
+void qLoadVar(int reg, char* identifier, enum RegType regType) {
+    struct Reg* stEntry = searchRegType(identifier, regType);
+    struct Reg* entryType = stEntry->typeReg;
+
+    if (stEntry->value == NULL) {
+        printf("Variable: %s. Value isn't initialized", identifier);
+        return;
+    }
+
+    if (strcmp(entryType->regName, "int") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=I(0x%x);", reg, stEntry->value);
+    } else if (strcmp(entryType->regName, "float") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(0x%x)", reg, stEntry->value);
+    } else if (strcmp(entryType->regName, "char") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(0x%x)", reg, stEntry->value);
+    } else if (strcmp(entryType->regName, "char*") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x)", reg, stEntry->value);
+    }
+    qLine();    
+}
+
+void qStore(char* identifier, int reg, enum RegType regType) {
+    struct Reg* stEntry = searchRegType(identifier, regType);
+    struct Reg* entryType = stEntry->typeReg;
+
+    if (stEntry->value == NULL) {
+        // assign some memory
+    }
+
+    if (strcmp(entryType->regName, "int") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "I(0x%x)=R%d;", stEntry->value, reg);
+    } else if (strcmp(entryType->regName, "float") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "F(0x%x)=R%d", stEntry->value, reg);
+    } else if (strcmp(entryType->regName, "char") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "U(0x%x)=R%d", stEntry->value, reg);
+    } else if (strcmp(entryType->regName, "char*") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d", stEntry->value, reg);
+    }
+    qLine();
+}
+
+void qLoadIntValue(int reg, int value) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%d;", reg, value);
+    qLine();
+}
+
+void qLoadFloatValue(int reg, float value) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%f;", reg, value);
+    qLine();
+}
+
+void qLoadCharValue(int reg, char value) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d='%c';", reg, value);
+    qLine();
+}
+
+void qLoadStringValue(int reg, char* value) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%p;", reg, value);
+    qLine();
 }
