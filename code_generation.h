@@ -1,3 +1,8 @@
+#ifndef CODE_GENERATION_H
+#define CODE_GENERATION_H
+
+#include "symbol_table.h"
+
 void advanceLabel();
 void newLabel();
 void setObjFile(char* objPath);
@@ -9,9 +14,10 @@ void qEnd();
 void qLine();
 void qCallFunction(char* function, char* arguments);
 void qCallFunctionNoArgs(char* function);
-void qMalloc(char* expression);
+void qMalloc(int reg);
 void qSizeOf(char* expression);
-void qPrint(char* expression);
+void qPrintReg(int reg);
+void qPrintExplicit(char* expression);
 void qPrintExplicitFormat(char* formatString, char* arguments);
 void qPrintImplicitFormat(char* identifier, char* arguments);
 void qStartWhile();
@@ -38,3 +44,5 @@ void qGreaterEquals(int reg1, int reg2);
 void qLesser(int reg1, int reg2);
 void qLesserEquals(int reg1, int reg2);
 void qReturn(int reg);
+
+#endif /* CODE_GENERATION_H */

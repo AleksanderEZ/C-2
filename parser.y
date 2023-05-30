@@ -84,10 +84,6 @@ void checkVarExists(char* name) {
   if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL) yyerror("Variable has not been declared");
 }
 
-void checkIsInt(char* name) {
-  struct Reg* variable = searchRegType("int", name);
-  if (variable == NULL) yyerror("Variable is not of type int");
-}
 %}
 
 %union {float real; int integer; char character; char* string}
@@ -117,6 +113,7 @@ void checkIsInt(char* name) {
 %type <integer> function_call
 %type <integer> condition
 
+%left STRING_VALUE
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
 %left ASTERISK DIVISION MODULUS
@@ -231,7 +228,7 @@ condition
 
 assignment
   : arithmetical_assignment
-  | IDENTIFIER array_index ASSIGNMENT expression { checkVarExists($1); setRegValue(); }
+  | IDENTIFIER array_index ASSIGNMENT expression {/* checkVarExists($1); qStoreArrayIndex($1, $2, $4) */}
   ;
 
 arithmetical_assignment
@@ -259,25 +256,26 @@ function_call
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); qCallFunctionNoArgs($1); }
   | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
   | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qPrint($3); }
   | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5);}
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qPrintExplicit($3);}
+  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qPrintReg($3); }
   | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); }
   ;
 
 arguments
-  : arguments COMMA expression { char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); $$ = pointer;}
-  | expression { char* pointer = strdup($1); $$ = pointer;}
+  : arguments COMMA expression { /* char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); $$ = pointer; */}
+  | expression {/* char* pointer = strdup($1); $$ = pointer; */}
   ;
 
 return
-  : RETURN expression { $$ = qReturn($2); }
+  : RETURN expression { qReturn($2); }
   | RETURN
   ;
 
 // array
 
 array
-  : OPEN_CURLY value_list CLOSE_CURLY { $$ = $2 }
+  : OPEN_CURLY value_list CLOSE_CURLY {/* $$ = $2 */}
   ;
 
 value_list
@@ -286,12 +284,12 @@ value_list
   ;
 
 array_declaration
-  : type IDENTIFIER array_index { declaration($1, $2, yylineno); void* address = qReserveMemory($3); setRegValue($2, variableSwitch, address); }
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); void* address = qReserveArray($6, arraySize, arrayType); setRegValue($2, variableSwitch, address); arraySize = 0; arrayType = voidType;}
+  : type IDENTIFIER array_index {/* declaration($1, $2, yylineno); void* address = qReserveMemory($3); setRegValue($2, variableSwitch, address); */}
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array {/* declaration($1, $2, yylineno); void* address = qReserveArray($6, arraySize, arrayType); setRegValue($2, variableSwitch, address); arraySize = 0; arrayType = voidType; */}
   ;
 
 array_index
-  : OPEN_SQUARE expression CLOSE_SQUARE { $$ = $2 }
+  : OPEN_SQUARE expression CLOSE_SQUARE {/* $$ = $2 */}
   ;
 
 //

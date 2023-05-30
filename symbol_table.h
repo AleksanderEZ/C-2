@@ -1,3 +1,6 @@
+#ifndef SYMBOL_TABLE_H
+#define SYMBOL_TABLE_H
+
 enum RegType { type, globalVariable, localVariable, function };
 
 struct Reg {
@@ -20,3 +23,5 @@ void* getRegValue(char* regName, enum RegType localGlobal);
 void closeBlock();
 void clear();
 void dump(const char* message);
+
+#endif /* SYMBOL_TABLE_H */

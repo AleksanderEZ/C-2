@@ -79,7 +79,7 @@ void qEnd() {
 }
 
 void qInstruction(char* instruction) {
-    snprintf(line, sizeof(char) * lineSizeLimit, instruction);
+    snprintf(line, sizeof(char) * lineSizeLimit, "%s", instruction);
     qLine();
 }
 
@@ -100,7 +100,7 @@ void qCallFunctionNoArgs(char* function) {
 
 }
 
-void qMalloc(char* expression) {
+void qMalloc(int reg) {
 
 }
 
@@ -108,12 +108,25 @@ void qSizeOf(char* expression) {
 
 }
 
-void qPrint(char* expression) {
+void qPrintReg(int reg) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", reg);
+    qLine();
+
+    qInstruction("GT(putf_);");
+
+    newLabel();
+    advanceLabel();
+}
+
+void qPrintExplicit(char* expression) {
     snprintf(line, sizeof(char) * lineSizeLimit, "STAT(%d)", statCodeCounter);
     qLine();
 
     pushStack(strlen(expression)+1); //strlen does not count /0
-    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,\"%s\"); ", stackTop, expression);
+    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", stackTop, expression);
     qLine();
     
     snprintf(line, sizeof(char) * lineSizeLimit, "CODE(%d)", statCodeCounter);
@@ -302,4 +315,8 @@ void qLesser(int reg1, int reg2) {
 void qLesserEquals(int reg1, int reg2) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<=R%d", reg1, reg1, reg2);
     qLine();
+}
+
+void qReturn(int reg) {
+    return;
 }
