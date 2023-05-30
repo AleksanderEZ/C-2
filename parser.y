@@ -115,6 +115,7 @@ void checkIsInt(char* name) {
 %type <integer> expression
 %type <integer> value
 %type <integer> function_call
+%type <integer> condition
 
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
@@ -214,18 +215,18 @@ else
   ;
 
 condition
-  : OPEN_PARENTHESIS condition CLOSE_PARENTHESIS
-  | condition AND condition
-  | condition OR condition
-  | NEGATOR condition
-  | '1'
-  | '0' 
-  | expression EQUALS expression 
-  | expression NOT_EQUALS expression 
-  | expression GREATER expression
-  | expression GREATER_EQUALS expression
-  | expression LESSER expression
-  | expression LESSER_EQUALS expression
+  : OPEN_PARENTHESIS condition CLOSE_PARENTHESIS { $$ = $2; }
+  | condition AND condition { $$ = $1; qAnd($1, $3); qFreeRegister($$); }
+  | condition OR condition { $$ = $1; qAnd($1, $3); qFreeRegister($$); }
+  | NEGATOR condition { $$ = $2; qNegate($2); qFreeRegister($$); }
+  | '1' { $$ = qAssignRegister(); qLoadIntValue($$, 1); }
+  | '0' { $$ = qAssignRegister(); qLoadIntValue($$, 0); }
+  | expression EQUALS expression { $$ = $1; qEquals($1, $3); qFreeRegister($$); }
+  | expression NOT_EQUALS expression { $$ = $1; qNotEquals($1, $3); qFreeRegister($$); }
+  | expression GREATER expression { $$ = $1; qGreater($1, $3); qFreeRegister($$); }
+  | expression GREATER_EQUALS expression { $$ = $1; qGreaterEquals($1, $3); qFreeRegister($$); }
+  | expression LESSER expression { $$ = $1; qLesser($1, $3); qFreeRegister($$); }
+  | expression LESSER_EQUALS expression { $$ = $1; qLesserEquals($1, $3); qFreeRegister($$); }
   ;
 
 assignment
@@ -240,17 +241,17 @@ arithmetical_assignment
 expression
   : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { $$ = $2; }
   | value
+  | IDENTIFIER { checkVarExists($1); $$ = qAssignRegister(); qLoadVar($$, $1, variableSwitch); }
+  | expression ADDITION expression { $$ = $1; qAdd($1, $3); qFreeRegister($$);}
+  | expression SUBTRACTION expression { $$ = $1; qSubtract($1, $3); qFreeRegister($$);}
+  | expression DIVISION expression { $$ = $1; qDivide($1, $3); qFreeRegister($$);}
+  | expression ASTERISK expression { $$ = $1; qMultiply($1, $3); qFreeRegister($$);}
+  | expression MODULUS expression { $$ = $1; qModulus($1, $3); qFreeRegister($$);}
   | function_call
   | IDENTIFIER array_index { checkVarExists($1); }
-  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
-  | IDENTIFIER { checkVarExists($1); $$ = qAssignRegister(); qLoadVar($$, $1, variableSwitch); }
   | AMPERSAND IDENTIFIER { checkVarExists($2); }
   | ASTERISK IDENTIFIER { checkVarExists($2); }
-  | expression ADDITION expression { $$ = $1; qFreeRegister($$);}
-  | expression SUBTRACTION expression { $$ = $1; qFreeRegister($$);}
-  | expression DIVISION expression { $$ = $1; qFreeRegister($$);}
-  | expression ASTERISK expression { $$ = $1; qFreeRegister($$);}
-  | expression MODULUS expression { $$ = $1; qFreeRegister($$);}
+  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
   ;
 
 function_call
@@ -269,9 +270,11 @@ arguments
   ;
 
 return
-  : RETURN expression
+  : RETURN expression { $$ = qReturn($2); }
   | RETURN
   ;
+
+// array
 
 array
   : OPEN_CURLY value_list CLOSE_CURLY { $$ = $2 }
@@ -284,12 +287,14 @@ value_list
 
 array_declaration
   : type IDENTIFIER array_index { declaration($1, $2, yylineno); void* address = qReserveMemory($3); setRegValue($2, variableSwitch, address); }
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); void* address = qReserveArray($6); setRegValue($2, variableSwitch, address);}
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array { declaration($1, $2, yylineno); void* address = qReserveArray($6, arraySize, arrayType); setRegValue($2, variableSwitch, address); arraySize = 0; arrayType = voidType;}
   ;
 
 array_index
   : OPEN_SQUARE expression CLOSE_SQUARE { $$ = $2 }
   ;
+
+//
 
 function_declaration
   : function_header { dummyReg(); } instruction_block

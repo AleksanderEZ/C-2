@@ -233,3 +233,73 @@ void qLoadStringValue(int reg, char* value) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%p;", reg, value);
     qLine();
 }
+
+void qAdd(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", reg1, reg1, reg2);
+    qLine();
+}
+
+void qSubtract(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d-R%d;", reg1, reg1, reg2);
+    qLine();
+}
+
+void qMultiply(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*R%d;", reg1, reg1, reg2);
+    qLine();
+}
+
+void qDivide(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d/R%d;", reg1, reg1, reg2);
+    qLine();
+}
+
+void qModulus(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d%%R%d;", reg1, reg1, reg2);
+    qLine();
+}
+
+void qAnd(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d&&R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qOr(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d||R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qNegate(int reg1) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=!R%d", reg1, reg1);
+    qLine();
+}
+
+void qEquals(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d==R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qNotEquals(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d!=R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qGreater(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d>R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qGreaterEquals(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d>=R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qLesser(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<R%d", reg1, reg1, reg2);
+    qLine();
+}
+
+void qLesserEquals(int reg1, int reg2) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<=R%d", reg1, reg1, reg2);
+    qLine();
+}
