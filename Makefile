@@ -1,4 +1,4 @@
-TESTFILE = src/PrintHelloWorld.c2
+TESTFILE = src/PrintNumbers.c2
 OBJECTFILE = obj.q.c
 IQ = IQ.o
 

@@ -23,7 +23,7 @@ void qPrintExplicit(char* expression);
 void qPrintExplicitFormat(char* formatString, char* arguments);
 void qPrintImplicitFormat(char* identifier, char* arguments);
 void qStartWhile();
-void qWhileCondition();
+void qWhileCondition(int reg);
 void qInstruction(char* instruction);
 void qFinishWhile();
 void qLoadVar(int reg, char* identifier, enum RegType regType);

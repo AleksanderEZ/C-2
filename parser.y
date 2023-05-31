@@ -99,7 +99,7 @@ void checkVarExists(char* name) {
 %token <string> CHAR
 %token <string> FLOAT
 %token <string> VOID
-%token ADDITION INCREMENT SUBTRACTION DECREMENT DIVISION MODULUS EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS AND OR NEGATOR ASTERISK AMPERSAND
+%token ADDITION SUBTRACTION DIVISION MODULUS EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS AND OR NEGATOR ASTERISK AMPERSAND
 %token COMMA SEMICOLON ASSIGNMENT OPEN_CURLY CLOSE_CURLY OPEN_PARENTHESIS CLOSE_PARENTHESIS OPEN_SQUARE CLOSE_SQUARE
 %token WHILE FOR BREAK CONTINUE RETURN IF ELSE ERROR
 
@@ -108,10 +108,10 @@ void checkVarExists(char* name) {
 %type <string> parameters
 %type <string> arguments
 
+%type <integer> condition
 %type <integer> expression
 %type <integer> value
 %type <integer> function_call
-%type <integer> condition
 
 %left STRING_VALUE
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
@@ -193,7 +193,7 @@ while
   ;
 
 while_header
-  : WHILE { dummyReg(); } OPEN_PARENTHESIS { qStartWhile(); } condition CLOSE_PARENTHESIS
+  : WHILE { dummyReg(); } OPEN_PARENTHESIS { qStartWhile(); } condition { qWhileCondition($5); } CLOSE_PARENTHESIS 
   ;
 
 if

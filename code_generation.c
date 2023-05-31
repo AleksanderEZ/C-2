@@ -26,6 +26,10 @@ void advanceLabel() {
 }
 
 void newLabel() {
+    if (atLabel == 1) {
+        fprintf(obj, "\n");
+        atLabel == 0;
+    }
     fprintf(obj, "L %d:", label);
     atLabel = 1;
 }
@@ -68,11 +72,8 @@ void qInit() {
 }
 
 void qEnd() {
-    if (atLabel == 1) {
-        fprintf(obj, "\tGT(__fin);\n");
-    } else {
-        fprintf(obj, "\t\tGT(__fin);\n");
-    }
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(__fin);");
+    qLine();
     fprintf(obj, "END");
     free(line);
     free(registers);
@@ -85,11 +86,11 @@ void qInstruction(char* instruction) {
 
 void qLine() {
     if (atLabel == 1) {
-        fprintf(obj, "\t\t\t%s\n", line);
+        fprintf(obj, "\t\t\t\t%s\n", line);
         atLabel = 0;
         return;
     }
-    fprintf(obj, "\t\t\t\t%s\n", line);
+    fprintf(obj, "\t\t\t\t\t\t\t\t%s\n", line);
 }
 
 void qStat() {
@@ -177,15 +178,14 @@ void qStartWhile() {
     advanceLabel();
 }
 
-void qWhileCondition() {
-    snprintf(line, sizeof(char) * lineSizeLimit, "IF(!R1) GT(%d)", breakLabel);
+void qWhileCondition(int reg) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "IF(!R%d) GT(%d);", reg, breakLabel);
     qLine();
+    qFreeRegister(reg);
 }
 
-
-
 void qFinishWhile() {
-    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d)", continueLabel);
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", continueLabel);
     qLine();
     int auxLabel = label;
     label = breakLabel;
@@ -195,7 +195,7 @@ void qFinishWhile() {
 
 void qLoadVar(int reg, char* identifier, enum RegType regType) {
     if (regType == localVariable) {
-        qLoadLocal();
+        // qLoadLocal();
     }
     if (regType == globalVariable) {
         qLoadGlobal(reg, identifier);
@@ -204,7 +204,7 @@ void qLoadVar(int reg, char* identifier, enum RegType regType) {
 
 void qStoreVar(int reg, char* identifier, enum RegType regType) {
     if (regType == localVariable) {
-        qStoreLocal();
+        // qStoreLocal();
     }
     if (regType == globalVariable) {
         qStoreGlobal(reg, identifier);

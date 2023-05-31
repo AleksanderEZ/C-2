@@ -6,6 +6,6 @@ int main(int argc, char **argv)
         printf("%d", n);
         if(n % 2 == 0) printf(" Par\n");
         else printf(" Impar\n");
-        n++;
+        n = n + 1;
     }
 }
