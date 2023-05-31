@@ -66,14 +66,14 @@ void qInit() {
         registers[i] = 0;
     }
     line = malloc(sizeof(char) * lineSizeLimit);
-    fprintf(obj, "#include \"Q.h\"\n\nBEGIN\n");
+    fprintf(obj, "#");
+    fprintf(obj, "include \"Q.h\"\n\nBEGIN\n");
     newLabel();
     advanceLabel();
 }
 
 void qEnd() {
-    snprintf(line, sizeof(char) * lineSizeLimit, "GT(__fin);");
-    qLine();
+    qInstruction("GT(__fin);");
     fprintf(obj, "END");
     free(line);
     free(registers);
@@ -86,11 +86,11 @@ void qInstruction(char* instruction) {
 
 void qLine() {
     if (atLabel == 1) {
-        fprintf(obj, "\t\t\t\t%s\n", line);
+        fprintf(obj, "    %s\n", line);
         atLabel = 0;
         return;
     }
-    fprintf(obj, "\t\t\t\t\t\t\t\t%s\n", line);
+    fprintf(obj, "        %s\n", line);
 }
 
 void qStat() {
@@ -225,13 +225,13 @@ void qLoadGlobal(int reg, char* identifier) {
         snprintf(line, sizeof(char) * lineSizeLimit, "R%d=I(0x%x);", reg, stEntry->value);
     } else if (strcmp(entryType->regName, "float") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(0x%x)", reg, stEntry->value);
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(0x%x);", reg, stEntry->value);
     } else if (strcmp(entryType->regName, "char") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(0x%x)", reg, stEntry->value);
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(0x%x);", reg, stEntry->value);
     } else if (strcmp(entryType->regName, "char*") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x)", reg, stEntry->value);
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x);", reg, stEntry->value);
     }
     qLine();    
 }
@@ -249,13 +249,13 @@ void qStoreGlobal(int reg, char* identifier) {
         snprintf(line, sizeof(char) * lineSizeLimit, "I(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "float") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "F(0x%x)=R%d", stEntry->value, reg);
+        snprintf(line, sizeof(char) * lineSizeLimit, "F(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "U(0x%x)=R%d", stEntry->value, reg);
+        snprintf(line, sizeof(char) * lineSizeLimit, "U(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char*") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d", stEntry->value, reg);
+        snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d;", stEntry->value, reg);
     }
     qLine();
 }
@@ -306,47 +306,47 @@ void qModulus(int reg1, int reg2) {
 }
 
 void qAnd(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d&&R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d&&R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qOr(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d||R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d||R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qNegate(int reg1) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=!R%d", reg1, reg1);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=!R%d;", reg1, reg1);
     qLine();
 }
 
 void qEquals(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d==R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d==R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qNotEquals(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d!=R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d!=R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qGreater(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d>R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d>R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qGreaterEquals(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d>=R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d>=R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qLesser(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<R%d;", reg1, reg1, reg2);
     qLine();
 }
 
 void qLesserEquals(int reg1, int reg2) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<=R%d", reg1, reg1, reg2);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d<=R%d;", reg1, reg1, reg2);
     qLine();
 }
 
