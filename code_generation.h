@@ -12,6 +12,8 @@ void qFreeRegisters();
 void qInit();
 void qEnd();
 void qLine();
+void qStat();
+void qCode();
 void qCallFunction(char* function, char* arguments);
 void qCallFunctionNoArgs(char* function);
 void qMalloc(int reg);
@@ -25,6 +27,9 @@ void qWhileCondition();
 void qInstruction(char* instruction);
 void qFinishWhile();
 void qLoadVar(int reg, char* identifier, enum RegType regType);
+void qStoreVar(int reg, char* identifier, enum RegType regType);
+void qLoadGlobal(int reg, char* identifier);
+void qStoreGlobal(int reg, char* identifier);
 void qLoadIntValue(int reg, int value);
 void qLoadFloatValue(int reg, float value);
 void qLoadCharValue(int reg, char value);
@@ -44,5 +49,6 @@ void qGreaterEquals(int reg1, int reg2);
 void qLesser(int reg1, int reg2);
 void qLesserEquals(int reg1, int reg2);
 void qReturn(int reg);
+
 
 #endif /* CODE_GENERATION_H */

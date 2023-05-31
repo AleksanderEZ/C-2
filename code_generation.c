@@ -85,11 +85,30 @@ void qInstruction(char* instruction) {
 
 void qLine() {
     if (atLabel == 1) {
-        fprintf(obj, "\t%s\n", line);
+        fprintf(obj, "\t\t\t%s\n", line);
         atLabel = 0;
         return;
     }
-    fprintf(obj, "\t\t%s\n", line);
+    fprintf(obj, "\t\t\t\t%s\n", line);
+}
+
+void qStat() {
+    if (atLabel == 1) {
+        fprintf(obj, "\n");
+        atLabel = 0;
+    }
+    snprintf(line, sizeof(char) * lineSizeLimit, "STAT(%d)", statCodeCounter);
+    fprintf(obj, "%s\n", line);
+}
+
+void qCode() {
+    if (atLabel == 1) {
+        fprintf(obj, "\n");
+        atLabel = 0;
+    }
+    snprintf(line, sizeof(char) * lineSizeLimit, "CODE(%d)", statCodeCounter);
+    fprintf(obj, "%s\n", line);
+    statCodeCounter++;
 }
 
 void qCallFunction(char* function, char* arguments) {
@@ -122,17 +141,13 @@ void qPrintReg(int reg) {
 }
 
 void qPrintExplicit(char* expression) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "STAT(%d)", statCodeCounter);
-    qLine();
+    qStat();
 
     pushStack(strlen(expression)+1); //strlen does not count /0
     snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", stackTop, expression);
     qLine();
     
-    snprintf(line, sizeof(char) * lineSizeLimit, "CODE(%d)", statCodeCounter);
-    qLine();
-
-    statCodeCounter++;
+    qCode();
 
     snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
     qLine();
@@ -179,7 +194,25 @@ void qFinishWhile() {
 }
 
 void qLoadVar(int reg, char* identifier, enum RegType regType) {
-    struct Reg* stEntry = searchRegType(identifier, regType);
+    if (regType == localVariable) {
+        qLoadLocal();
+    }
+    if (regType == globalVariable) {
+        qLoadGlobal(reg, identifier);
+    }
+}
+
+void qStoreVar(int reg, char* identifier, enum RegType regType) {
+    if (regType == localVariable) {
+        qStoreLocal();
+    }
+    if (regType == globalVariable) {
+        qStoreGlobal(reg, identifier);
+    }
+}
+
+void qLoadGlobal(int reg, char* identifier) {
+    struct Reg* stEntry = searchRegType(identifier, globalVariable);
     struct Reg* entryType = stEntry->typeReg;
 
     if (stEntry->value == NULL) {
@@ -203,8 +236,8 @@ void qLoadVar(int reg, char* identifier, enum RegType regType) {
     qLine();    
 }
 
-void qStore(char* identifier, int reg, enum RegType regType) {
-    struct Reg* stEntry = searchRegType(identifier, regType);
+void qStoreGlobal(int reg, char* identifier) {
+    struct Reg* stEntry = searchRegType(identifier, globalVariable);
     struct Reg* entryType = stEntry->typeReg;
 
     if (stEntry->value == NULL) {
