@@ -189,7 +189,7 @@ third_part_for
   ;
 
 while
-  : while_header instruction { qFinishWhile(); }
+  : while_header instruction { qFinishWhile(); closeBlock(); }
   ;
 
 while_header

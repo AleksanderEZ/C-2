@@ -1,11 +1,8 @@
 /* literal */
-int main(int argc, char **argv)
-{
-    int n;
-    while(n < 10) {
-        printf("%d", n);
-        if(n % 2 == 0) printf(" Par\n");
-        else printf(" Impar\n");
-        n = n + 1;
-    }
+int n;    
+while(n < 10) {
+    printf("%d", n);
+    if(n % 2 == 0) printf(" Par\n");
+    else printf(" Impar\n");
+    n = n + 1;
 }
