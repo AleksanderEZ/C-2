@@ -11,6 +11,7 @@ int label = 0;
 int atLabel = 0;
 int continueLabel;
 int breakLabel;
+int elseLabel;
 int statCodeCounter = 0;
 int stackBase = 0x11fff;
 int stackTop = 0x11fff;
@@ -171,6 +172,7 @@ void qPrintImplicitFormat(char* identifier, char* arguments) {
 }
 
 void qStartWhile() {
+    //continue label y break label en pila para habilitar anidamiento
     continueLabel = label;
     newLabel();
     advanceLabel();
@@ -189,6 +191,21 @@ void qFinishWhile() {
     qLine();
     int auxLabel = label;
     label = breakLabel;
+    newLabel();
+    label = auxLabel;
+}
+
+void qIf(int reg) {
+    //pila de else label
+    elseLabel = label;
+    advanceLabel();
+    snprintf(line, sizeof(char) * lineSizeLimit, "IF(!R%d) GT(%d);", reg, elseLabel);
+    qLine();
+}
+
+void qElse() {
+    int auxLabel = label;
+    label = elseLabel;
     newLabel();
     label = auxLabel;
 }

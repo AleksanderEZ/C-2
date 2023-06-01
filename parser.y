@@ -197,18 +197,18 @@ while_header
   ;
 
 if
-  : if_header simple_instruction_type SEMICOLON
-  | if_header simple_instruction_type SEMICOLON else
-  | if_header instruction_block
-  | if_header instruction_block else 
+  : if_header simple_instruction_type SEMICOLON { closeBlock(); }
+  | if_header simple_instruction_type SEMICOLON else { closeBlock(); }
+  | if_header instruction_block { closeBlock(); }
+  | if_header instruction_block else { closeBlock(); }
   ;
 
 if_header
-  : IF OPEN_PARENTHESIS condition CLOSE_PARENTHESIS
+  : IF { dummyReg(); } OPEN_PARENTHESIS condition { qIf($4); } CLOSE_PARENTHESIS
   ;
 
 else
-  : ELSE instruction
+  : ELSE { dummyReg(); qElse(); } instruction
   ;
 
 condition

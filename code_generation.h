@@ -49,6 +49,7 @@ void qGreaterEquals(int reg1, int reg2);
 void qLesser(int reg1, int reg2);
 void qLesserEquals(int reg1, int reg2);
 void qReturn(int reg);
-
+void qIf(int reg);
+void qElse();
 
 #endif /* CODE_GENERATION_H */
