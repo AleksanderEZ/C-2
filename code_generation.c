@@ -5,6 +5,11 @@
 #include "code_generation.h"
 #include "symbol_table.h"
 
+#define stackSize 10
+
+int topElse = -1;
+int topContinueBreak = -1;
+
 FILE* obj;
 int lineSizeLimit = 100;
 int label = 0;
@@ -17,6 +22,62 @@ int stackBase = 0x11fff;
 int stackTop = 0x11fff;
 char* line;
 int* registers;
+
+int elseStack[stackSize];
+int continueBreakStack[stackSize];
+
+void push(int label, enum StackOption stackOption) {
+    int* stack;
+    int* top;
+    switch (stackOption)
+    {
+    case CONTINUE_BREAK_STACK:
+        stack = continueBreakStack;
+        top = &topContinueBreak;
+        break;
+    case ELSE_STACK:
+        stack = elseStack;
+        top = &topElse;
+        break;
+    default:
+        break;
+    }
+
+    if (*top = stackSize - 1) {
+        printf("Stack full\n");
+        return;
+    }
+
+    *top += 1;
+    stack[*top] = label;
+}
+
+int pop(enum StackOption stackOption) {
+    int* stack;
+    int* top;
+    switch (stackOption)
+    {
+    case CONTINUE_BREAK_STACK:
+        stack = continueBreakStack;
+        top = &topContinueBreak;
+        break;
+    case ELSE_STACK:
+        stack = elseStack;
+        top = &topElse;
+        break;
+    default:
+        break;
+    }
+
+    if (*top == -1)
+    {
+        printf("Stack is empty!\n");
+        return -1;
+    }
+    int returnValue = stack[*top];
+    *top = *top - 1;
+    return returnValue;
+}
 
 void pushStack(int bytes) {
     stackTop = stackTop - (bytes - 1);

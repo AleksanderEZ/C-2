@@ -3,6 +3,10 @@
 
 #include "symbol_table.h"
 
+enum StackOption {ELSE_STACK, CONTINUE_BREAK_STACK};
+
+void push(int label, enum StackOption stackOption);
+int pop(enum StackOption stackOption);
 void advanceLabel();
 void newLabel();
 void setObjFile(char* objPath);
