@@ -189,11 +189,11 @@ third_part_for
   ;
 
 while
-  : while_header instruction { qFinishWhile(); closeBlock(); }
+  : while_header { dummyReg(); } instruction { qFinishWhile(); closeBlock(); }
   ;
 
 while_header
-  : WHILE { dummyReg(); } OPEN_PARENTHESIS { qStartWhile(); } condition { qWhileCondition($5); } CLOSE_PARENTHESIS 
+  : WHILE OPEN_PARENTHESIS { qStartWhile(); } condition { qWhileCondition($4); } CLOSE_PARENTHESIS 
   ;
 
 if
