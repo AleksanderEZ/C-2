@@ -6,6 +6,9 @@
 #include "symbol_table.h"
 
 #define stackSize 10
+#define notAssigned 0x24001
+
+void yyerror(char* message);
 
 int topElse = -1;
 int topContinueBreak = -1;
@@ -17,9 +20,11 @@ int atLabel = 0;
 int continueLabel;
 int breakLabel;
 int elseLabel;
+int skipElseLabel;
 int statCodeCounter = 0;
-int stackBase = 0x11fff;
-int stackTop = 0x11fff;
+int staticTop = 0x12000;
+int stackBase = 0x9000;
+int stackTop = 0x9000;
 char* line;
 int* registers;
 
@@ -44,7 +49,7 @@ void push(int label, enum StackOption stackOption) {
     }
 
     if (*top = stackSize - 1) {
-        printf("Stack full\n");
+        yyerror("Stack full");
         return;
     }
 
@@ -71,7 +76,7 @@ int pop(enum StackOption stackOption) {
 
     if (*top == -1)
     {
-        printf("Stack is empty!\n");
+        yyerror("Stack is empty!");
         return -1;
     }
     int returnValue = stack[*top];
@@ -80,7 +85,11 @@ int pop(enum StackOption stackOption) {
 }
 
 void pushStack(int bytes) {
-    stackTop = stackTop - (bytes - 1);
+    stackTop = stackTop - bytes;
+}
+
+void pushStatic(int bytes) {
+    staticTop = staticTop - bytes;
 }
 
 void advanceLabel() {
@@ -190,12 +199,25 @@ void qSizeOf(char* expression) {
 
 }
 
-void qPrintReg(int reg) {
+void qPrint(char* formatString, int reg) {
+    qStat();
+
+    pushStatic(strlen(formatString)+1); //strlen does not count /0
+    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", staticTop, formatString);
+    qLine();
+    
+    qCode();
+
     snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
     qLine();
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", reg);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", staticTop);
     qLine();
+
+    if (reg != -1) {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", reg);
+        qLine();
+    }
 
     qInstruction("GT(putf_);");
 
@@ -204,32 +226,33 @@ void qPrintReg(int reg) {
 }
 
 void qPrintExplicit(char* expression) {
-    qStat();
+    qPrint(expression, -1);
+}
 
-    pushStack(strlen(expression)+1); //strlen does not count /0
-    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", stackTop, expression);
-    qLine();
-    
-    qCode();
+void qPrintExplicitFormat(char* formatString, int reg) {
+    qPrint(formatString, reg);
+}
+
+void qPrintImplicitFormat(char* identifier, int reg) {
+    //identifier is string?
+    struct Reg* result = search(identifier);
+    if (strcmp(result->typeReg->regName, "char*") != 0) yyerror("Identifier not of string type");
 
     snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
     qLine();
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", stackTop);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", result->value);
     qLine();
+
+    if (reg != -1) {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", reg);
+        qLine();
+    }
 
     qInstruction("GT(putf_);");
 
     newLabel();
     advanceLabel();
-}
-
-void qPrintExplicitFormat(char* formatString, char* arguments) {
-
-}
-
-void qPrintImplicitFormat(char* identifier, char* arguments) {
-
 }
 
 void qStartWhile() {
@@ -271,45 +294,65 @@ void qElse() {
     label = auxLabel;
 }
 
-void qLoadVar(int reg, char* identifier, enum RegType regType) {
-    if (regType == localVariable) {
+void qSkipElse() {
+    skipElseLabel = label;
+    advanceLabel();
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", skipElseLabel);
+    qLine();
+}
+
+void qSkipElseLabel() {
+    int auxLabel = label;
+    label = skipElseLabel;
+    newLabel();
+    label = auxLabel;
+}
+
+void qLoadVar(int reg, char* identifier) {
+    struct Reg* result = search(identifier);
+    if (result->type == localVariable) {
         // qLoadLocal();
     }
-    if (regType == globalVariable) {
+    if (result->type == globalVariable) {
         qLoadGlobal(reg, identifier);
     }
 }
 
-void qStoreVar(int reg, char* identifier, enum RegType regType) {
-    if (regType == localVariable) {
+void qStoreVar(int reg, char* identifier) {
+    struct Reg* result = search(identifier);
+    if (result->type == localVariable) {
         // qStoreLocal();
     }
-    if (regType == globalVariable) {
+    if (result->type == globalVariable) {
         qStoreGlobal(reg, identifier);
     }
 }
 
 void qLoadGlobal(int reg, char* identifier) {
     struct Reg* stEntry = searchRegType(identifier, globalVariable);
-    struct Reg* entryType = stEntry->typeReg;
+    char* entryType = stEntry->typeReg->regName;
+    int value = stEntry->value;
 
-    if (stEntry->value == NULL) {
-        printf("Variable: %s. Value isn't initialized", identifier);
+    if (value == notAssigned) {
+        char* message = malloc(sizeof(char) * 40);
+        snprintf(message, 40, "Variable: %s. Value isn't initialized", identifier);
+        yyerror(message);
+        free(message);
         return;
     }
 
-    if (strcmp(entryType->regName, "int") == 0)
+    if (strcmp(entryType, "int") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=I(0x%x);", reg, stEntry->value);
-    } else if (strcmp(entryType->regName, "float") == 0)
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=I(0x%x);", reg, value);
+    } else if (strcmp(entryType, "float") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(0x%x);", reg, stEntry->value);
-    } else if (strcmp(entryType->regName, "char") == 0)
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(0x%x);", reg, value);
+    } else if (strcmp(entryType, "char") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(0x%x);", reg, stEntry->value);
-    } else if (strcmp(entryType->regName, "char*") == 0)
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(0x%x);", reg, value);
+    } else if (strcmp(entryType, "char*") == 0)
     {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x);", reg, stEntry->value);
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x);", reg, value);
     }
     qLine();    
 }
@@ -318,21 +361,33 @@ void qStoreGlobal(int reg, char* identifier) {
     struct Reg* stEntry = searchRegType(identifier, globalVariable);
     struct Reg* entryType = stEntry->typeReg;
 
-    if (stEntry->value == NULL) {
-        // assign some memory
-    }
-
     if (strcmp(entryType->regName, "int") == 0)
     {
+        if (stEntry->value == notAssigned) {
+            pushStatic(4);
+            stEntry->value = staticTop;
+        }
         snprintf(line, sizeof(char) * lineSizeLimit, "I(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "float") == 0)
     {
+        if (stEntry->value == notAssigned) {
+            pushStatic(4);
+            stEntry->value = staticTop;
+        }
         snprintf(line, sizeof(char) * lineSizeLimit, "F(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char") == 0)
     {
+        if (stEntry->value == notAssigned) {
+            pushStatic(1);
+            stEntry->value = staticTop;
+        }
         snprintf(line, sizeof(char) * lineSizeLimit, "U(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char*") == 0)
     {
+        if (stEntry->value == notAssigned) {
+            pushStatic(1);
+            stEntry->value = staticTop;
+        }
         snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d;", stEntry->value, reg);
     }
     qLine();

@@ -4,10 +4,12 @@ IQ = IQ.o
 
 all: $(OBJECTFILE) qmachine
 	./qmachine $(OBJECTFILE)
+	rm -f IQ-cpp.q.c
 
 debug: c2 qmachine
 	gdb -q c2 -ex 'run $(TESTFILE) $(OBJECTFILE)'
 	./qmachine -g $(OBJECTFILE)
+	rm -f IQ-cpp.q.c
 
 qmachine: $(IQ) Qlib.c Qlib.h Q.h
 	gcc -no-pie -o qmachine $(IQ) Qlib.c

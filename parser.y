@@ -11,6 +11,7 @@ extern FILE* yyin;
 extern int yylineno;
 int yydebug = 1;
 void yyerror(char*);
+int yylex();
 
 enum RegType variableSwitch = globalVariable;
 struct Reg* voidType;
@@ -86,7 +87,7 @@ void checkVarExists(char* name) {
 
 %}
 
-%union {float real; int integer; char character; char* string}
+%union { float real; int integer; char character; char* string; }
 %token <string> IDENTIFIER
 %token <string> STRING_VALUE
 %token <string> SIZEOF
@@ -150,7 +151,7 @@ simple_instruction_type
 
 simple_declaration
   : type IDENTIFIER { declaration($1, $2, yylineno); } 
-  | type assignment
+  | type IDENTIFIER ASSIGNMENT expression { declaration($1, $2, yylineno); qStoreVar($4, $2); qFreeRegister($4); }
   | array_declaration
   ;
 
@@ -179,7 +180,7 @@ for_header
 
 first_part_for
   : 
-  | arithmetical_assignment 
+  | IDENTIFIER ASSIGNMENT expression
   | type IDENTIFIER ASSIGNMENT expression { variableSwitch = localVariable; declaration($1, $2, yylineno); variableSwitch = globalVariable; }
   ;
 
@@ -193,22 +194,22 @@ while
   ;
 
 while_header
-  : WHILE OPEN_PARENTHESIS { qStartWhile(); } condition { qWhileCondition($4); } CLOSE_PARENTHESIS 
+  : WHILE OPEN_PARENTHESIS { qStartWhile(); } condition { qWhileCondition($4); qFreeRegister($4); } CLOSE_PARENTHESIS 
   ;
 
 if
   : if_header simple_instruction_type SEMICOLON { closeBlock(); }
-  | if_header simple_instruction_type SEMICOLON else { closeBlock(); }
+  | if_header simple_instruction_type SEMICOLON { qSkipElse(); } else { closeBlock(); }
   | if_header instruction_block { closeBlock(); }
-  | if_header instruction_block else { closeBlock(); }
+  | if_header instruction_block { qSkipElse(); } else { closeBlock(); }
   ;
 
 if_header
-  : IF { dummyReg(); } OPEN_PARENTHESIS condition { qIf($4); } CLOSE_PARENTHESIS
+  : IF { dummyReg(); } OPEN_PARENTHESIS condition { qIf($4); qFreeRegister($4); } CLOSE_PARENTHESIS
   ;
 
 else
-  : ELSE { dummyReg(); qElse(); } instruction
+  : ELSE { dummyReg(); qElse(); } instruction { qSkipElseLabel(); }
   ;
 
 condition
@@ -227,18 +228,14 @@ condition
   ;
 
 assignment
-  : arithmetical_assignment
+  : IDENTIFIER ASSIGNMENT expression { checkVarExists($1); qStoreVar($3, $1); qFreeRegister($3); }
   | IDENTIFIER array_index ASSIGNMENT expression {/* checkVarExists($1); qStoreArrayIndex($1, $2, $4) */}
-  ;
-
-arithmetical_assignment
-  : IDENTIFIER ASSIGNMENT expression { checkVarExists($1); }
   ;
 
 expression
   : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { $$ = $2; }
   | value
-  | IDENTIFIER { checkVarExists($1); $$ = qAssignRegister(); qLoadVar($$, $1, variableSwitch); }
+  | IDENTIFIER { checkVarExists($1); $$ = qAssignRegister(); qLoadVar($$, $1); }
   | expression ADDITION expression { $$ = $1; qAdd($1, $3); qFreeRegister($3);}
   | expression SUBTRACTION expression { $$ = $1; qSubtract($1, $3); qFreeRegister($3);}
   | expression DIVISION expression { $$ = $1; qDivide($1, $3); qFreeRegister($3);}
@@ -256,10 +253,9 @@ function_call
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); qCallFunctionNoArgs($1); }
   | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
   | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA arguments CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5);}
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5); qFreeRegister($5); }
   | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qPrintExplicit($3);}
-  | PRINTF OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qPrintReg($3); }
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA arguments CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); }
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); qFreeRegister($5); }
   ;
 
 arguments
