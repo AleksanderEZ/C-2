@@ -213,17 +213,17 @@ else
 
 condition
   : OPEN_PARENTHESIS condition CLOSE_PARENTHESIS { $$ = $2; }
-  | condition AND condition { $$ = $1; qAnd($1, $3); qFreeRegister($$); }
-  | condition OR condition { $$ = $1; qAnd($1, $3); qFreeRegister($$); }
-  | NEGATOR condition { $$ = $2; qNegate($2); qFreeRegister($$); }
+  | condition AND condition { $$ = $1; qAnd($1, $3); qFreeRegister($3); }
+  | condition OR condition { $$ = $1; qAnd($1, $3); qFreeRegister($3); }
+  | NEGATOR condition { $$ = $2; qNegate($2); qFreeRegister($2); }
   | '1' { $$ = qAssignRegister(); qLoadIntValue($$, 1); }
   | '0' { $$ = qAssignRegister(); qLoadIntValue($$, 0); }
-  | expression EQUALS expression { $$ = $1; qEquals($1, $3); qFreeRegister($$); }
-  | expression NOT_EQUALS expression { $$ = $1; qNotEquals($1, $3); qFreeRegister($$); }
-  | expression GREATER expression { $$ = $1; qGreater($1, $3); qFreeRegister($$); }
-  | expression GREATER_EQUALS expression { $$ = $1; qGreaterEquals($1, $3); qFreeRegister($$); }
-  | expression LESSER expression { $$ = $1; qLesser($1, $3); qFreeRegister($$); }
-  | expression LESSER_EQUALS expression { $$ = $1; qLesserEquals($1, $3); qFreeRegister($$); }
+  | expression EQUALS expression { $$ = $1; qEquals($1, $3); qFreeRegister($3); }
+  | expression NOT_EQUALS expression { $$ = $1; qNotEquals($1, $3); qFreeRegister($3); }
+  | expression GREATER expression { $$ = $1; qGreater($1, $3); qFreeRegister($3); }
+  | expression GREATER_EQUALS expression { $$ = $1; qGreaterEquals($1, $3); qFreeRegister($3); }
+  | expression LESSER expression { $$ = $1; qLesser($1, $3); qFreeRegister($3); }
+  | expression LESSER_EQUALS expression { $$ = $1; qLesserEquals($1, $3); qFreeRegister($3); }
   ;
 
 assignment
@@ -239,11 +239,11 @@ expression
   : OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { $$ = $2; }
   | value
   | IDENTIFIER { checkVarExists($1); $$ = qAssignRegister(); qLoadVar($$, $1, variableSwitch); }
-  | expression ADDITION expression { $$ = $1; qAdd($1, $3); qFreeRegister($$);}
-  | expression SUBTRACTION expression { $$ = $1; qSubtract($1, $3); qFreeRegister($$);}
-  | expression DIVISION expression { $$ = $1; qDivide($1, $3); qFreeRegister($$);}
-  | expression ASTERISK expression { $$ = $1; qMultiply($1, $3); qFreeRegister($$);}
-  | expression MODULUS expression { $$ = $1; qModulus($1, $3); qFreeRegister($$);}
+  | expression ADDITION expression { $$ = $1; qAdd($1, $3); qFreeRegister($3);}
+  | expression SUBTRACTION expression { $$ = $1; qSubtract($1, $3); qFreeRegister($3);}
+  | expression DIVISION expression { $$ = $1; qDivide($1, $3); qFreeRegister($3);}
+  | expression ASTERISK expression { $$ = $1; qMultiply($1, $3); qFreeRegister($3);}
+  | expression MODULUS expression { $$ = $1; qModulus($1, $3); qFreeRegister($3);}
   | function_call
   | IDENTIFIER array_index { checkVarExists($1); }
   | AMPERSAND IDENTIFIER { checkVarExists($2); }
