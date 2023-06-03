@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+void yyerror(char* message);
+
 struct Reg* top = NULL;
 
 struct Reg* search(char* regName) {
@@ -21,7 +23,7 @@ struct Reg* searchRegType(char* regName, enum RegType regType) {
 }
 
 void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
-    if(search(regName) != NULL) printf("Error: Name already defined");
+    if(search(regName) != NULL && strcmp(regName, "openBlock") != 0) yyerror("Name already defined");
     struct Reg* new = (struct Reg*) malloc(sizeof(struct Reg));
     new->regName = regName;
     new->type = type;

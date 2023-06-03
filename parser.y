@@ -113,13 +113,12 @@ void checkVarExists(char* name) {
 %type <integer> expression
 %type <integer> value
 %type <integer> function_call
+%type <integer> array_index
 
-%left STRING_VALUE
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
 %left ASTERISK DIVISION MODULUS
 %left OPEN_PARENTHESIS CLOSE_PARENTHESIS
-
 %%
 
 raiz: { qInit(); } program { qEnd(); };
@@ -135,11 +134,11 @@ instructions
   ;
 
 instruction 
-  : simple_instruction_type SEMICOLON
-  | complex_instruction_type
+  : simple_instruction SEMICOLON
+  | complex_instruction
   ;
 
-simple_instruction_type
+simple_instruction
   : 
   | simple_declaration 
   | expression 
@@ -155,7 +154,7 @@ simple_declaration
   | array_declaration
   ;
 
-complex_instruction_type
+complex_instruction
   : control 
   | instruction_block
   ;
@@ -198,8 +197,8 @@ while_header
   ;
 
 if
-  : if_header simple_instruction_type SEMICOLON { closeBlock(); }
-  | if_header simple_instruction_type SEMICOLON { qSkipElse(); } else { closeBlock(); }
+  : if_header simple_instruction SEMICOLON { closeBlock(); }
+  | if_header simple_instruction SEMICOLON { qSkipElse(); } else { closeBlock(); }
   | if_header instruction_block { closeBlock(); }
   | if_header instruction_block { qSkipElse(); } else { closeBlock(); }
   ;
@@ -253,9 +252,9 @@ function_call
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); qCallFunctionNoArgs($1); }
   | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
   | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5); qFreeRegister($5); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qPrintExplicit($3);}
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); qFreeRegister($5); }
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qStartPrint(); qPrintExplicitFormat($3, $5); qFreeRegister($5); qFinishPrint(); }
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qStartPrint(); qPrintExplicit($3); qFinishPrint(); }
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qStartPrint(); qPrintImplicitFormat($3, $5); qFreeRegister($5); qFinishPrint(); }
   ;
 
 arguments
@@ -285,7 +284,7 @@ array_declaration
   ;
 
 array_index
-  : OPEN_SQUARE expression CLOSE_SQUARE {/* $$ = $2 */}
+  : OPEN_SQUARE expression CLOSE_SQUARE { $$ = $2; }
   ;
 
 //

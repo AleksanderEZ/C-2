@@ -22,6 +22,8 @@ void qCallFunction(char* function, char* arguments);
 void qCallFunctionNoArgs(char* function);
 void qMalloc(int reg);
 void qSizeOf(char* expression);
+void qStartPrint();
+void qFinishPrint();
 void qPrint(char* formatString, int reg);
 void qPrintExplicit(char* expression);
 void qPrintExplicitFormat(char* formatString, int reg);

@@ -30,4 +30,4 @@ lex.yy.c: scanner.l parser.tab.h
 	flex scanner.l 
 
 parser.tab.c: parser.y symbol_table.c symbol_table.h code_generation.c code_generation.h
-	bison -dvt parser.y
+	bison -dvt parser.y -Wcounterexamples

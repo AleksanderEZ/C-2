@@ -115,10 +115,10 @@ int qAssignRegister() {
         if(registers[i] == 0) {
             reg = i;
             registers[i] = 1;
-            break;
+            return reg;
         }
     }
-    return reg;
+    yyerror("No regs available");
 }
 
 void qFreeRegister(int reg) {
@@ -199,6 +199,18 @@ void qSizeOf(char* expression) {
 
 }
 
+void qStartPrint() {
+    registers[0] = 1;
+    registers[1] = 1;
+    registers[2] = 1;
+}
+
+void qFinishPrint() {
+    registers[0] = 0;
+    registers[1] = 0;
+    registers[2] = 0;
+}
+
 void qPrint(char* formatString, int reg) {
     qStat();
 
@@ -208,6 +220,24 @@ void qPrint(char* formatString, int reg) {
     
     qCode();
 
+    ////// SAVE REGS //////
+    int r0clone = qAssignRegister();
+    int r1clone = qAssignRegister();
+    int r2clone = qAssignRegister();
+
+    if(reg == 0) reg = r0clone;
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R0;", r0clone);
+    qLine();
+
+    if(reg == 1) reg = r1clone;
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R1;", r1clone);
+    qLine();
+
+    if(reg == 2) reg = r2clone;
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R2;", r2clone);
+    qLine();
+
+    //////  PRINT   //////
     snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
     qLine();
 
@@ -221,8 +251,23 @@ void qPrint(char* formatString, int reg) {
 
     qInstruction("GT(putf_);");
 
+    ///// RECOVER REGS //////
+    
+    snprintf(line, sizeof(char) * lineSizeLimit, "R0=R%d;", r0clone);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", r1clone);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", r2clone);
+    qLine();
+    
     newLabel();
     advanceLabel();
+
+    qFreeRegister(r0clone);
+    qFreeRegister(r1clone);
+    qFreeRegister(r2clone);
 }
 
 void qPrintExplicit(char* expression) {
