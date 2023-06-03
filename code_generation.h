@@ -18,6 +18,7 @@ void qEnd();
 void qLine();
 void qStat();
 void qCode();
+void qMain();
 void qCallFunction(char* function, char* arguments);
 void qCallFunctionNoArgs(char* function);
 void qMalloc(int reg);

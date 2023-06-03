@@ -46,6 +46,9 @@ void functionDeclaration(char* typeName, char* name, int line) {
   struct Reg* t = searchRegType(typeName, type);
   if (t == NULL) yyerror("Type does not exist");
   char* functionName = strtok(name, "(");
+  if (strcmp(functionName, "main") == 0) {
+    qMain();
+  }
   char* definitiveFunctionName = strdup(functionName);
   newReg(definitiveFunctionName, function, t, line);
 

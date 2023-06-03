@@ -3,6 +3,7 @@ char* getMessage() {
 }
 
 int main() {
+    printf(getMessage());
     float numbers[5];
     int n = 0;
     while(n < 5) {

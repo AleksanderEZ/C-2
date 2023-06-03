@@ -15,7 +15,7 @@ int topContinueBreak = -1;
 
 FILE* obj;
 int lineSizeLimit = 100;
-int label = 0;
+int label = 1;
 int atLabel = 0;
 int continueLabel;
 int breakLabel;
@@ -139,8 +139,8 @@ void qInit() {
     line = malloc(sizeof(char) * lineSizeLimit);
     fprintf(obj, "#");
     fprintf(obj, "include \"Q.h\"\n\nBEGIN\n");
-    newLabel();
-    advanceLabel();
+    //newLabel();
+    //advanceLabel();
 }
 
 void qEnd() {
@@ -181,6 +181,13 @@ void qCode() {
     snprintf(line, sizeof(char) * lineSizeLimit, "CODE(%d)", statCodeCounter);
     fprintf(obj, "%s\n", line);
     statCodeCounter++;
+}
+
+void qMain() {
+    int auxLabel = label;
+    label = 0;
+    newLabel();
+    label = auxLabel;
 }
 
 void qCallFunction(char* function, char* arguments) {
@@ -356,7 +363,7 @@ void qSkipElseLabel() {
 void qLoadVar(int reg, char* identifier) {
     struct Reg* result = search(identifier);
     if (result->type == localVariable) {
-        // qLoadLocal();
+        qLoadLocal(reg, identifier);
     }
     if (result->type == globalVariable) {
         qLoadGlobal(reg, identifier);
@@ -366,7 +373,7 @@ void qLoadVar(int reg, char* identifier) {
 void qStoreVar(int reg, char* identifier) {
     struct Reg* result = search(identifier);
     if (result->type == localVariable) {
-        // qStoreLocal();
+        qStoreLocal(reg, identifier);
     }
     if (result->type == globalVariable) {
         qStoreGlobal(reg, identifier);
