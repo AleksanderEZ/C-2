@@ -3,7 +3,7 @@
 
 #include "symbol_table.h"
 
-enum StackOption {ELSE_STACK, CONTINUE_BREAK_STACK};
+enum StackOption {CONTINUE_STACK, ELSE_STACK, BREAK_STACK, SKIP_ELSE_STACK};
 
 void push(int label, enum StackOption stackOption);
 int pop(enum StackOption stackOption);
@@ -37,6 +37,8 @@ void qLoadVar(int reg, char* identifier);
 void qStoreVar(int reg, char* identifier);
 void qLoadGlobal(int reg, char* identifier);
 void qStoreGlobal(int reg, char* identifier);
+void qLoadLocal(int reg, char* identifier);
+void qStoreLocal(int reg, char* identifier);
 void qLoadIntValue(int reg, int value);
 void qLoadFloatValue(int reg, float value);
 void qLoadCharValue(int reg, char value);

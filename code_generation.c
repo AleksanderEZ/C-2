@@ -11,16 +11,14 @@
 void yyerror(char* message);
 
 int topElse = -1;
-int topContinueBreak = -1;
+int topContinue = -1;
+int topBreak = -1;
+int topSkipElse = -1;
 
 FILE* obj;
 int lineSizeLimit = 100;
 int label = 1;
 int atLabel = 0;
-int continueLabel;
-int breakLabel;
-int elseLabel;
-int skipElseLabel;
 int statCodeCounter = 0;
 int staticTop = 0x12000;
 int stackBase = 0x9000;
@@ -28,32 +26,42 @@ int stackTop = 0x9000;
 char* line;
 int* registers;
 
+int skipElseStack[stackSize];
 int elseStack[stackSize];
-int continueBreakStack[stackSize];
+int continueStack[stackSize];
+int breakStack[stackSize];
 
 void push(int label, enum StackOption stackOption) {
     int* stack;
     int* top;
     switch (stackOption)
     {
-    case CONTINUE_BREAK_STACK:
-        stack = continueBreakStack;
-        top = &topContinueBreak;
+    case CONTINUE_STACK:
+        stack = continueStack;
+        top = &topContinue;
         break;
     case ELSE_STACK:
         stack = elseStack;
         top = &topElse;
         break;
+    case BREAK_STACK:
+        stack = breakStack;
+        top = &topBreak;
+        break;
+    case SKIP_ELSE_STACK:
+        stack = skipElseStack;
+        top = &topSkipElse;
+        break;
     default:
         break;
     }
 
-    if (*top = stackSize - 1) {
+    if (*top >= stackSize - 1) {
         yyerror("Stack full");
         return;
     }
 
-    *top += 1;
+    *top = *top + 1;
     stack[*top] = label;
 }
 
@@ -62,19 +70,27 @@ int pop(enum StackOption stackOption) {
     int* top;
     switch (stackOption)
     {
-    case CONTINUE_BREAK_STACK:
-        stack = continueBreakStack;
-        top = &topContinueBreak;
+    case CONTINUE_STACK:
+        stack = continueStack;
+        top = &topContinue;
         break;
     case ELSE_STACK:
         stack = elseStack;
         top = &topElse;
         break;
+    case BREAK_STACK:
+        stack = breakStack;
+        top = &topBreak;
+        break;
+    case SKIP_ELSE_STACK:
+        stack = skipElseStack;
+        top = &topSkipElse;
+        break;
     default:
         break;
     }
 
-    if (*top == -1)
+    if (*top <= -1)
     {
         yyerror("Stack is empty!");
         return -1;
@@ -139,8 +155,6 @@ void qInit() {
     line = malloc(sizeof(char) * lineSizeLimit);
     fprintf(obj, "#");
     fprintf(obj, "include \"Q.h\"\n\nBEGIN\n");
-    //newLabel();
-    //advanceLabel();
 }
 
 void qEnd() {
@@ -308,60 +322,69 @@ void qPrintImplicitFormat(char* identifier, int reg) {
 }
 
 void qStartWhile() {
-    //continue label y break label en pila para habilitar anidamiento
-    continueLabel = label;
+    printf("Push continue\n");
+    push(label, CONTINUE_STACK);
     newLabel();
     advanceLabel();
-    breakLabel = label;
+    printf("Push break\n");
+    push(label, BREAK_STACK);
     advanceLabel();
 }
 
 void qWhileCondition(int reg) {
+    int breakLabel = breakStack[topBreak];
     snprintf(line, sizeof(char) * lineSizeLimit, "IF(!R%d) GT(%d);", reg, breakLabel);
     qLine();
     qFreeRegister(reg);
 }
 
 void qFinishWhile() {
+    printf("Pop continue\n");
+    int continueLabel = pop(CONTINUE_STACK);
     snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", continueLabel);
     qLine();
     int auxLabel = label;
-    label = breakLabel;
+    printf("Pop break\n");
+    label = pop(BREAK_STACK);
     newLabel();
     label = auxLabel;
 }
 
 void qIf(int reg) {
-    //pila de else label
-    elseLabel = label;
+    int elseLabel = label;
     advanceLabel();
     snprintf(line, sizeof(char) * lineSizeLimit, "IF(!R%d) GT(%d);", reg, elseLabel);
     qLine();
+    push(elseLabel, ELSE_STACK);
 }
 
 void qElse() {
     int auxLabel = label;
-    label = elseLabel;
+    label = pop(ELSE_STACK);
     newLabel();
     label = auxLabel;
 }
 
 void qSkipElse() {
-    skipElseLabel = label;
+    int skipElseLabel = label;
     advanceLabel();
     snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", skipElseLabel);
     qLine();
+    push(skipElseLabel, SKIP_ELSE_STACK);
 }
 
 void qSkipElseLabel() {
     int auxLabel = label;
-    label = skipElseLabel;
+    label = pop(SKIP_ELSE_STACK);
     newLabel();
     label = auxLabel;
 }
 
 void qLoadVar(int reg, char* identifier) {
     struct Reg* result = search(identifier);
+    if (result == NULL) {
+        yyerror("Variable not declared");
+    }
     if (result->type == localVariable) {
         qLoadLocal(reg, identifier);
     }
@@ -372,6 +395,9 @@ void qLoadVar(int reg, char* identifier) {
 
 void qStoreVar(int reg, char* identifier) {
     struct Reg* result = search(identifier);
+    if (result == NULL) {
+        yyerror("Variable not declared");
+    }
     if (result->type == localVariable) {
         qStoreLocal(reg, identifier);
     }
@@ -441,6 +467,71 @@ void qStoreGlobal(int reg, char* identifier) {
             stEntry->value = staticTop;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d;", stEntry->value, reg);
+    }
+    qLine();
+}
+
+void qLoadLocal(int reg, char* identifier) {
+    struct Reg* stEntry = searchRegType(identifier, localVariable);
+    char* entryType = stEntry->typeReg->regName;
+    int value = stEntry->value;
+
+    if (value == notAssigned) {
+        char* message = malloc(sizeof(char) * 40);
+        snprintf(message, 40, "Variable: %s. Value isn't initialized", identifier);
+        yyerror(message);
+        free(message);
+        return;
+    }
+
+    if (strcmp(entryType, "int") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=;", reg, value);
+    } else if (strcmp(entryType, "float") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=;", reg, value);
+    } else if (strcmp(entryType, "char") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=;", reg, value);
+    } else if (strcmp(entryType, "char*") == 0)
+    {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=;", reg, value);
+    }
+    qLine();    
+}
+
+void qStoreLocal(int reg, char* identifier) {
+    struct Reg* stEntry = searchRegType(identifier, localVariable);
+    struct Reg* entryType = stEntry->typeReg;
+
+    if (strcmp(entryType->regName, "int") == 0)
+    {
+        if (stEntry->value == notAssigned) {
+            pushStack(4);
+            stEntry->value = stackTop;
+        }
+        snprintf(line, sizeof(char) * lineSizeLimit, "=R%d;", stEntry->value, reg);
+    } else if (strcmp(entryType->regName, "float") == 0)
+    {
+        if (stEntry->value == notAssigned) {
+            pushStack(4);
+            stEntry->value = stackTop;
+        }
+        snprintf(line, sizeof(char) * lineSizeLimit, "=R%d;", stEntry->value, reg);
+    } else if (strcmp(entryType->regName, "char") == 0)
+    {
+        if (stEntry->value == notAssigned) {
+            pushStack(1);
+            stEntry->value = stackTop;
+        }
+        snprintf(line, sizeof(char) * lineSizeLimit, "=R%d;", stEntry->value, reg);
+    } else if (strcmp(entryType->regName, "char*") == 0)
+    {
+        if (stEntry->value == notAssigned) {
+            pushStack(1);
+            stEntry->value = stackTop;
+        }
+        snprintf(line, sizeof(char) * lineSizeLimit, "=R%d;", stEntry->value, reg);
     }
     qLine();
 }
