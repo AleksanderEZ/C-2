@@ -14,6 +14,7 @@ int topElse = -1;
 int topContinue = -1;
 int topBreak = -1;
 int topSkipElse = -1;
+int topAdvance = -1;
 
 FILE* obj;
 int lineSizeLimit = 100;
@@ -22,7 +23,7 @@ int atLabel = 0;
 int statCodeCounter = 0;
 int staticTop = 0x12000;
 int stackBase = 0x9000;
-int stackTop = 0x9000;
+int stackAdvance;
 char* line;
 int* registers;
 
@@ -30,6 +31,7 @@ int skipElseStack[stackSize];
 int elseStack[stackSize];
 int continueStack[stackSize];
 int breakStack[stackSize];
+int advanceStack[stackSize];
 
 void push(int label, enum StackOption stackOption) {
     int* stack;
@@ -51,6 +53,10 @@ void push(int label, enum StackOption stackOption) {
     case SKIP_ELSE_STACK:
         stack = skipElseStack;
         top = &topSkipElse;
+        break;
+    case ADVANCE_STACK:
+        stack = advanceStack;
+        top = &topAdvance;
         break;
     default:
         break;
@@ -86,6 +92,10 @@ int pop(enum StackOption stackOption) {
         stack = skipElseStack;
         top = &topSkipElse;
         break;
+    case ADVANCE_STACK:
+        stack = advanceStack;
+        top = &topAdvance;
+        break;
     default:
         break;
     }
@@ -100,12 +110,38 @@ int pop(enum StackOption stackOption) {
     return returnValue;
 }
 
-void pushStack(int bytes) {
-    stackTop = stackTop - bytes;
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d", bytes);
+void qNewStackBase() {
+    push(stackAdvance, ADVANCE_STACK);
+    qInstruction("R6=R7;");
+    stackAdvance = 0;
 }
 
-void pushStatic(int bytes) {
+void qPushStack(int bytes) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d", bytes);
+    qLine();
+    stackAdvance = bytes;
+}
+
+void qFreeStack() {
+    qInstruction("R7=R6;");
+    stackAdvance = 0;
+}
+
+void qRecoverBase() {
+    qInstruction("R6=P(R7+4);");
+    stackAdvance = pop(ADVANCE_STACK);
+}
+
+void qFunctionReturn() {
+    int reg = qAssignRegister();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(R7);", reg);
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(R%d);", reg);
+    qLine();
+    qFreeRegister(reg);
+}
+
+void qPushStatic(int bytes) {
     staticTop = staticTop - bytes;
 }
 
@@ -210,7 +246,7 @@ int qFunctionDeclaration(int count, char** types) {
     int functionLabel = label;
     newLabel();
     advanceLabel();
-    qInstruction("R6=R7;");
+    qNewStackBase();
     int paramSize;
     char* type;
     for (int i = 0; i < count; i++)
@@ -231,13 +267,14 @@ int qFunctionDeclaration(int count, char** types) {
             paramSize = paramSize + 4;
         }        
     }
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d", paramSize + 8); // 8 = etiq ret + base
-    qLine();
+    qPushStack(paramSize + 8);
     return functionLabel;
 }
 
 void qFinishFunction() {
-
+    qFreeStack();
+    qRecoverBase();
+    qFunctionReturn();
 }
 
 void qCallFunction(char* function, char* arguments) {
@@ -271,7 +308,7 @@ void qFinishPrint() {
 void qPrint(char* formatString, int reg) {
     qStat();
 
-    pushStatic(strlen(formatString)+1); //strlen does not count /0
+    qPushStatic(strlen(formatString)+1); //strlen does not count /0
     snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", staticTop, formatString);
     qLine();
     
@@ -477,28 +514,28 @@ void qStoreGlobal(int reg, char* identifier) {
     if (strcmp(entryType->regName, "int") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStatic(4);
+            qPushStatic(4);
             stEntry->value = staticTop;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "I(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "float") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStatic(4);
+            qPushStatic(4);
             stEntry->value = staticTop;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "F(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStatic(1);
+            qPushStatic(1);
             stEntry->value = staticTop;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "U(0x%x)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char*") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStatic(1);
+            qPushStatic(1);
             stEntry->value = staticTop;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d;", stEntry->value, reg);
@@ -542,29 +579,29 @@ void qStoreLocal(int reg, char* identifier) {
     if (strcmp(entryType->regName, "int") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStack(4);
-            stEntry->value = stackTop - stackBase;
+            qPushStack(4);
+            stEntry->value = stackAdvance;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "I(R6-%d)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "float") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStack(4);
-            stEntry->value = stackTop - stackBase;
+            qPushStack(4);
+            stEntry->value = stackAdvance;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "F(R6-%d)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStack(1);
-            stEntry->value = stackTop - stackBase;
+            qPushStack(1);
+            stEntry->value = stackAdvance;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "U(R6-%d)=R%d;", stEntry->value, reg);
     } else if (strcmp(entryType->regName, "char*") == 0)
     {
         if (stEntry->value == notAssigned) {
-            pushStack(1);
-            stEntry->value = stackTop - stackBase;
+            qPushStack(1);
+            stEntry->value = stackAdvance;
         }
         snprintf(line, sizeof(char) * lineSizeLimit, "P(R6-%d)=R%d;", stEntry->value, reg);
     }
