@@ -117,7 +117,7 @@ void qNewStackBase() {
 }
 
 void qPushStack(int bytes) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d", bytes);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d;", bytes);
     qLine();
     stackAdvance = bytes;
 }
@@ -164,7 +164,7 @@ void setObjFile(char* objPath) {
 
 int qAssignRegister() {
     int reg;
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
         if(registers[i] == 0) {
             reg = i;
             registers[i] = 1;
@@ -175,18 +175,21 @@ int qAssignRegister() {
 }
 
 void qFreeRegister(int reg) {
+    if (reg >= 6) {
+        yyerror("Attempted to access reg 6 or greater");
+    }
     registers[reg] = 0;
 }
 
 void qFreeRegisters() {
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
         registers[i] = 0;
     }
 }
 
 void qInit() {
-    registers = malloc(sizeof(int) * 7);
-    for (int i = 0; i < 7; i++) {
+    registers = malloc(sizeof(int) * 6);
+    for (int i = 0; i < 6; i++) {
         registers[i] = 0;
     }
     line = malloc(sizeof(char) * lineSizeLimit);
@@ -239,6 +242,8 @@ void qMain() {
     label = 0;
     newLabel();
     label = auxLabel;
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=0x%x;", stackBase);
+    qInstruction("R6=R7;");
 }
 
 
@@ -247,6 +252,7 @@ int qFunctionDeclaration(int count, char** types) {
     newLabel();
     advanceLabel();
     qNewStackBase();
+    if (count <= 0) return functionLabel;
     int paramSize;
     char* type;
     for (int i = 0; i < count; i++)
@@ -394,11 +400,9 @@ void qPrintImplicitFormat(char* identifier, int reg) {
 }
 
 void qStartWhile() {
-    printf("Push continue\n");
     push(label, CONTINUE_STACK);
     newLabel();
     advanceLabel();
-    printf("Push break\n");
     push(label, BREAK_STACK);
     advanceLabel();
 }
@@ -411,12 +415,10 @@ void qWhileCondition(int reg) {
 }
 
 void qFinishWhile() {
-    printf("Pop continue\n");
     int continueLabel = pop(CONTINUE_STACK);
     snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", continueLabel);
     qLine();
     int auxLabel = label;
-    printf("Pop break\n");
     label = pop(BREAK_STACK);
     newLabel();
     label = auxLabel;

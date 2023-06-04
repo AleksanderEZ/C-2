@@ -52,39 +52,48 @@ void functionDeclaration(char* typeName, char* name, int line) {
 
   char* tokens[10];
   char* token = strtok(NULL, ",");
-  if (token == NULL) return;
-  char* definitiveToken = strdup(token);
-  int i = 0;
-  while (token != NULL) {
-    definitiveToken = strdup(token);
-    tokens[i] = definitiveToken;
-    printf("%s\n", tokens[i]);
-    i++;
-    token = strtok(NULL, ",");
-  }
+  if (token != NULL) {
+    char* definitiveToken = strdup(token);
+    int i = 0;
+    while (token != NULL) {
+      definitiveToken = strdup(token);
+      tokens[i] = definitiveToken;
+      printf("%s\n", tokens[i]);
+      i++;
+      token = strtok(NULL, ",");
+    }
 
-  variableSwitch = localVariable;
-  char* type;
-  char* definitiveType;
-  char* parameterName;
-  char* definitiveParameterName;
-  char** types = malloc(sizeof(char) * 7 * i);
-  for(int j = 0; j < i; j++){
-    type = strtok(tokens[j], " ");
-    parameterName = strtok(NULL, " ");
-    definitiveType = strdup(type);
-    definitiveParameterName = strdup(parameterName);
-    declaration(definitiveType, definitiveParameterName, line);
-    free(tokens[j]);
-  }
-  struct Reg* function = searchRegType(definitiveFunctionName, function, t, line);
-  if (strcmp(definitiveFunctionName, "main") == 0) {
-    qMain();
-    function->value = 0;
+    variableSwitch = localVariable;
+    char* type;
+    char* definitiveType;
+    char* parameterName;
+    char* definitiveParameterName;
+    char** types = malloc(sizeof(char) * 7 * i);
+    for(int j = 0; j < i; j++){
+      type = strtok(tokens[j], " ");
+      parameterName = strtok(NULL, " ");
+      definitiveType = strdup(type);
+      definitiveParameterName = strdup(parameterName);
+      declaration(definitiveType, definitiveParameterName, line);
+      free(tokens[j]);
+    }
+    struct Reg* functionResult = searchRegType(definitiveFunctionName, function);
+    if (strcmp(definitiveFunctionName, "main") == 0) {
+      qMain();
+      functionResult->value = 0;
+    } else {
+      functionResult->value = qFunctionDeclaration(i, types);
+    }
+    free(types);
   } else {
-    function->value = qFunctionDeclaration(i, types);
+    struct Reg* functionResult = searchRegType(definitiveFunctionName, function);
+    if (strcmp(definitiveFunctionName, "main") == 0) {
+      qMain();
+      functionResult->value = 0;
+    } else {
+      functionResult->value = qFunctionDeclaration(0, NULL);
+    }
   }
-  free(types);
 }
 
 void checkFunExists(char* name) {
@@ -116,6 +125,7 @@ void checkVarExists(char* name) {
 
 %type <string> type
 %type <string> function_subheader
+%type <string> function_header
 %type <string> parameters
 %type <string> arguments
 
@@ -300,12 +310,12 @@ array_index
 //
 
 function_declaration
-  : function_header { dummyReg(); } instruction_block { qFinishFunction(); }
+  : function_header { dummyReg(); } instruction_block { if(strncmp($1, "main", 4) != 0) qFinishFunction(); }
   ;
 
 function_header
-  : type function_subheader { functionDeclaration($1, $2, yylineno); }
-  | VOID function_subheader { functionDeclaration(strdup("void"), $2, yylineno); }
+  : type function_subheader { functionDeclaration($1, $2, yylineno); $$ = $2; }
+  | VOID function_subheader { functionDeclaration(strdup("void"), $2, yylineno); $$ = $2; }
   ;
 
 function_subheader
