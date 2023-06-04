@@ -205,6 +205,41 @@ void qMain() {
     label = auxLabel;
 }
 
+
+int qFunctionDeclaration(int count, char** types) {
+    int functionLabel = label;
+    newLabel();
+    advanceLabel();
+    qInstruction("R6=R7;");
+    int paramSize;
+    char* type;
+    for (int i = 0; i < count; i++)
+    {
+        type = types[i];
+        if (strcmp(type, "int") == 0) {
+            paramSize = paramSize + 4;
+        } else if (strcmp(type, "float") == 0)
+        {
+            paramSize = paramSize + 4;
+        }
+         else if (strcmp(type, "char") == 0)
+        {
+            paramSize = paramSize + 1;
+        }
+         else if (strcmp(type, "char*") == 0)
+        {
+            paramSize = paramSize + 4;
+        }        
+    }
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d", paramSize + 8); // 8 = etiq ret + base
+    qLine();
+    return functionLabel;
+}
+
+void qFinishFunction() {
+
+}
+
 void qCallFunction(char* function, char* arguments) {
 
 }

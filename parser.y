@@ -46,9 +46,7 @@ void functionDeclaration(char* typeName, char* name, int line) {
   struct Reg* t = searchRegType(typeName, type);
   if (t == NULL) yyerror("Type does not exist");
   char* functionName = strtok(name, "(");
-  if (strcmp(functionName, "main") == 0) {
-    qMain();
-  }
+
   char* definitiveFunctionName = strdup(functionName);
   newReg(definitiveFunctionName, function, t, line);
 
@@ -70,6 +68,7 @@ void functionDeclaration(char* typeName, char* name, int line) {
   char* definitiveType;
   char* parameterName;
   char* definitiveParameterName;
+  char** types = malloc(sizeof(char) * 7 * i);
   for(int j = 0; j < i; j++){
     type = strtok(tokens[j], " ");
     parameterName = strtok(NULL, " ");
@@ -78,6 +77,14 @@ void functionDeclaration(char* typeName, char* name, int line) {
     declaration(definitiveType, definitiveParameterName, line);
     free(tokens[j]);
   }
+  struct Reg* function = searchRegType(definitiveFunctionName, function, t, line);
+  if (strcmp(definitiveFunctionName, "main") == 0) {
+    qMain();
+    function->value = 0;
+  } else {
+    function->value = qFunctionDeclaration(i, types);
+  }
+  free(types);
 }
 
 void checkFunExists(char* name) {
@@ -293,7 +300,7 @@ array_index
 //
 
 function_declaration
-  : function_header { dummyReg(); } instruction_block
+  : function_header { dummyReg(); } instruction_block { qFinishFunction(); }
   ;
 
 function_header

@@ -62,5 +62,7 @@ void qIf(int reg);
 void qElse();
 void qSkipElse();
 void qSkipElseLabel();
+int qFunctionDeclaration(int count, char** types);
+void qFinishFunction();
 
 #endif /* CODE_GENERATION_H */
