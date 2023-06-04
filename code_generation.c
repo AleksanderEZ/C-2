@@ -253,6 +253,8 @@ void qMain() {
     newLabel();
     label = auxLabel;
     snprintf(line, sizeof(char) * lineSizeLimit, "R7=0x%x;", stackBase);
+    qLine();
+    
     qInstruction("R6=R7;");
 }
 
