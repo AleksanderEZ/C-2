@@ -3,7 +3,7 @@
 
 #include "symbol_table.h"
 
-enum StackOption {CONTINUE_STACK, ELSE_STACK, BREAK_STACK, SKIP_ELSE_STACK, ADVANCE_STACK};
+enum StackOption {CONTINUE_STACK, ELSE_STACK, BREAK_STACK, SKIP_ELSE_STACK, ADVANCE_STACK, PARAMETER_STACK};
 
 void push(int label, enum StackOption stackOption);
 int pop(enum StackOption stackOption);
@@ -19,8 +19,9 @@ void qLine();
 void qStat();
 void qCode();
 void qMain();
-void qCallFunction(char* function, char* arguments);
-void qCallFunctionNoArgs(char* function);
+void qFunctionArguments(int reg);
+void qCallFunction(char* functionName);
+void qCallFunctionNoArgs(char* functionName);
 void qMalloc(int reg);
 void qSizeOf(char* expression);
 void qStartPrint();

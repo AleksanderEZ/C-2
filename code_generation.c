@@ -15,6 +15,7 @@ int topContinue = -1;
 int topBreak = -1;
 int topSkipElse = -1;
 int topAdvance = -1;
+int topParameter = -1;
 
 FILE* obj;
 int lineSizeLimit = 100;
@@ -32,6 +33,7 @@ int elseStack[stackSize];
 int continueStack[stackSize];
 int breakStack[stackSize];
 int advanceStack[stackSize];
+int parameterStack[stackSize];
 
 void push(int label, enum StackOption stackOption) {
     int* stack;
@@ -57,6 +59,10 @@ void push(int label, enum StackOption stackOption) {
     case ADVANCE_STACK:
         stack = advanceStack;
         top = &topAdvance;
+        break;
+    case PARAMETER_STACK:
+        stack = parameterStack;
+        top = &topParameter;
         break;
     default:
         break;
@@ -95,6 +101,10 @@ int pop(enum StackOption stackOption) {
     case ADVANCE_STACK:
         stack = advanceStack;
         top = &topAdvance;
+        break;
+    case PARAMETER_STACK:
+        stack = parameterStack;
+        top = &topParameter;
         break;
     default:
         break;
@@ -246,34 +256,16 @@ void qMain() {
     qInstruction("R6=R7;");
 }
 
-
 int qFunctionDeclaration(int count, char** types) {
     int functionLabel = label;
     newLabel();
     advanceLabel();
     qNewStackBase();
-    if (count <= 0) return functionLabel;
-    int paramSize;
-    char* type;
-    for (int i = 0; i < count; i++)
-    {
-        type = types[i];
-        if (strcmp(type, "int") == 0) {
-            paramSize = paramSize + 4;
-        } else if (strcmp(type, "float") == 0)
-        {
-            paramSize = paramSize + 4;
-        }
-         else if (strcmp(type, "char") == 0)
-        {
-            paramSize = paramSize + 1;
-        }
-         else if (strcmp(type, "char*") == 0)
-        {
-            paramSize = paramSize + 4;
-        }        
+
+    if (count > 0) {
+        // load params
     }
-    qPushStack(paramSize + 8);
+
     return functionLabel;
 }
 
@@ -283,12 +275,55 @@ void qFinishFunction() {
     qFunctionReturn();
 }
 
-void qCallFunction(char* function, char* arguments) {
-
+void qFunctionArguments(int reg) {
+    push(reg, PARAMETER_STACK);
 }
 
-void qCallFunctionNoArgs(char* function) {
+void qCallFunction(char* functionName) {
+    struct Reg* searchResult = searchRegType(functionName, function);
+    int functionLabel = searchResult->value;
+    int paramSize;
 
+    // Calcular param size
+
+    qPushStack(paramSize);
+
+    // Asignar params en la pila
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7+4)=R6;");
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7)=%d;", label);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", functionLabel);
+    qLine();
+
+    newLabel();
+    advanceLabel();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", paramSize);
+    qLine();
+}
+
+void qCallFunctionNoArgs(char* functionName) {
+    struct Reg* searchResult = searchRegType(functionName, function);
+    int functionLabel = searchResult->value;
+    
+    qPushStack(8);
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7+4)=R6;");
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7)=%d;", label);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", functionLabel);
+    qLine();
+
+    newLabel();
+    advanceLabel();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", 8);
+    qLine();
 }
 
 void qMalloc(int reg) {

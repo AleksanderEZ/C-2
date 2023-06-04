@@ -127,7 +127,6 @@ void checkVarExists(char* name) {
 %type <string> function_subheader
 %type <string> function_header
 %type <string> parameters
-%type <string> arguments
 
 %type <integer> condition
 %type <integer> expression
@@ -268,7 +267,7 @@ expression
   ;
 
 function_call
-  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); qCallFunction($1, $3); }
+  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); qCallFunction($1); }
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); qCallFunctionNoArgs($1); }
   | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
   | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
@@ -278,9 +277,8 @@ function_call
   ;
 
 arguments
-  : arguments COMMA expression { /* char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); $$ = pointer; */}
-  | expression {/* char* pointer = strdup($1); $$ = pointer; */}
-  ;
+  : arguments COMMA expression { qFunctionArguments($3); }
+  | expression { qFunctionArguments($1); };
 
 return
   : RETURN expression { qReturn($2); }
