@@ -8,6 +8,7 @@
 #define stackSize 10
 #define notAssigned 0x24001
 
+extern int yylineno;
 void yyerror(char* message);
 
 int topElse = -1;
@@ -293,23 +294,46 @@ void qFunctionArguments(int reg) {
 int qCallFunction(char* functionName) {
     struct Reg* searchResult = searchRegType(functionName, function);
     int functionLabel = searchResult->value;
+    int functionParameters = searchResult->nParameters;
     int paramSize = 8;
     int returnSize = 0;
 
-    // For each parameter of the function
-        // paramSize = paramSize + qSizeOf(parameterType);
+    int n = 0;
+    struct Reg* param = searchResult;
+    char* types[functionParameters];
+    char* names[functionParameters];
+    while(n < functionParameters) {
+        param = param->next;
+        paramSize = paramSize + qSizeOf(param->typeReg->regName);
+        types[n] = param->typeReg->regName;
+        names[n] = param->regName;
+        n = n + 1;
+    }
 
     char* functionType = searchResult->typeReg->regName;
     returnSize = qSizeOf(functionType);
     
     qPushStack(paramSize + returnSize);
 
-    int nextParameter = 8;
+    int regs = topParameter+1;
+    n = topParameter;
+    int parameters[regs];
+    while(n > -1) {
+        parameters[n] = pop(PARAMETER_STACK);
+        n = n - 1;
+    }
 
-    // For each register in the parameter stack
-        // Load parameter with register parameter stack e.g. int: I(R7+nextParameter)=popRegister()
-        // nextParameter = nextParameter + registerTypeSize. In this case registerTypeSize (an int) is 4.
-        // free reg
+    int nextParameter = 8;
+    n = 0;
+    while(n < regs) {
+        char* currentType = types[n];
+        snprintf(line, sizeof(char) * lineSizeLimit, "%c(R7+%d)=R%d", qTypeMnemonic(currentType), nextParameter, parameters[n]);
+        qLine();
+        newParameter(strdup(names[n]), localVariable, searchRegType(types[n], type), yylineno);
+        nextParameter = nextParameter + qSizeOf(currentType);
+        qFreeRegister(parameters[n]);
+        n = n + 1;
+    }
 
     snprintf(line, sizeof(char) * lineSizeLimit, "P(R7+4)=R6;");
     qLine();
@@ -362,6 +386,7 @@ void qReturn(int reg) {
     // What is the parameterSize of the function
     snprintf(line, sizeof(char) * lineSizeLimit, "type(R6+parameterSize)=R%d", reg);
     qLine();
+    qFreeRegister(reg);
 }
 
 void qStartPrint() {
@@ -695,39 +720,33 @@ void qLesserEquals(int reg1, int reg2) {
 }
 
 int qSizeOf(char* typeName) {
-    int returnSize = 0;
     if (strcmp(typeName, "int")) {
-        returnSize = 4;
+        return 4;
     } else if (strcmp(typeName, "float"))
     {
-        returnSize = 4;
+        return 4;
     } else if (strcmp(typeName, "char"))
     {
-        returnSize = 1;
+        return 1;
     } else if (strcmp(typeName, "char*"))
     {
-        returnSize = 4;
-    } else {
-        yyerror("Unrecognized type");
+        return 4;
     }
-    return returnSize;
+    yyerror("Unrecognized type");
 }
 
 char qTypeMnemonic(char* typeName) {
-    char returnChar;
     if (strcmp(typeName, "int")) {
-        returnChar = 'I';
+        return 'I';
     } else if (strcmp(typeName, "float"))
     {
-        returnChar = 'F';
+        return 'F';
     } else if (strcmp(typeName, "char"))
     {
-        returnChar = 'U';
+        return 'U';
     } else if (strcmp(typeName, "char*"))
     {
-        returnChar = 'P';
-    } else {
-        yyerror("Unrecognized type");
+        return 'P';
     }
-    return returnChar;
+    yyerror("Unrecognized type");
 }

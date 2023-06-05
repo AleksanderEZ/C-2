@@ -48,7 +48,6 @@ void functionDeclaration(char* typeName, char* name, int line) {
   char* functionName = strtok(name, "(");
 
   char* definitiveFunctionName = strdup(functionName);
-  newReg(definitiveFunctionName, function, t, line);
 
   char* tokens[10];
   char* token = strtok(NULL, ",");
@@ -62,6 +61,8 @@ void functionDeclaration(char* typeName, char* name, int line) {
       i++;
       token = strtok(NULL, ",");
     }
+
+    newFunction(definitiveFunctionName, function, t, line, i);
 
     variableSwitch = localVariable;
     char* type;
@@ -88,6 +89,7 @@ void functionDeclaration(char* typeName, char* name, int line) {
       functionResult->value = qFunctionDeclaration(i, types, names);
     }
   } else {
+    newFunction(definitiveFunctionName, function, t, line, 0);
     struct Reg* functionResult = searchRegType(definitiveFunctionName, function);
     if (strcmp(definitiveFunctionName, "main") == 0) {
       qMain();
@@ -271,8 +273,8 @@ expression
 function_call
   : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); dummyReg(); $$ = qCallFunction($1); closeBlock(); }
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); $$ = qCallFunctionNoArgs($1); }
-  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
-  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
+//  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
+//  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
   | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qStartPrint(); qPrintExplicitFormat($3, $5); qFreeRegister($5); qFinishPrint(); }
   | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qStartPrint(); qPrintExplicit($3); qFinishPrint(); }
   | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qStartPrint(); qPrintImplicitFormat($3, $5); qFreeRegister($5); qFinishPrint(); }

@@ -8,8 +8,12 @@ void yyerror(char* message);
 struct Reg* top = NULL;
 
 struct Reg* search(char* regName) {
+    if (top == NULL) return NULL;
     struct Reg* p = top;
-    while(p != NULL && strcmp(p->regName, regName) != 0) p = p->next;
+    while (p->next != NULL) {
+        p = p->next;
+    }
+    while(p != NULL && strcmp(p->regName, regName) != 0) p = p->previous;
     return p;
 }
 
@@ -32,22 +36,75 @@ void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
         new->typeReg = typeReg;
         new->lineOfDeclaration = line;
     }
-    new->next = top;
-    top = new;
+    if (top == NULL) {
+        top = new;
+    } else {
+        struct Reg* p = top;
+        while (p->next != NULL) {
+            p = p->next;
+        }
+        p->next = new;
+        new->previous = p;
+    }
+}
+
+void newParameter(char* regName, enum RegType type, struct Reg* typeReg, int line) {
+    struct Reg* new = (struct Reg*) malloc(sizeof(struct Reg));
+    new->regName = regName;
+    new->type = type;
+    new->value = 0x24001;
+    new->typeReg = typeReg;
+    new->lineOfDeclaration = line;
+    
+    if (top == NULL) {
+        top = new;
+    } else {
+        struct Reg* p = top;
+        while (p->next != NULL) {
+            p = p->next;
+        }
+        p->next = new;
+        new->previous = p;
+    }
+}
+
+void newFunction(char* regName, enum RegType type, struct Reg* typeReg, int line, int nParameters) {
+    newReg(regName, type, typeReg, line);
+    struct Reg* p = top;
+    while (p->next != NULL) {
+        p = p->next;
+    }
+    p->nParameters = nParameters;
+}
+
+void removeLast() {
+    struct Reg *p = top;
+    while(p->next->next != NULL){
+        p = p->next;
+    }
+    if (p->next->regName != NULL) free(p->next->regName);
+    free(p->next);
+    p->next = NULL;
 }
 
 void closeBlock() {
     dump("--CLOSING BLOCK--\n");
-    while(top != NULL && top->type != function && strcmp(top->regName, "openBlock") != 0) {
-        struct Reg *p = top->next;
-        if (top->regName != NULL) free(top->regName);
-        free(top); 
-        top=p;
+    startClosingBlock();
+}
+
+void startClosingBlock() {
+    struct Reg *p = top;
+    while(p->next->next != NULL){
+        p = p->next;
     }
-    struct Reg *p = top->next;
-    if (top->regName != NULL) free(top->regName);
-    free(top); 
-    top=p;
+    if(p->next->type == function && strcmp(p->next->regName, "openBlock") == 0) {
+        if (p->next->regName != NULL) free(p->next->regName);
+        free(p->next);
+        p->next = NULL;
+    } else {
+        removeLast();
+        startClosingBlock();
+    }
 }
 
 void clear() {
