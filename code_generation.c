@@ -17,6 +17,10 @@ int topSkipElse = -1;
 int topAdvance = -1;
 int topParameter = -1;
 
+int r0clone;  //save R0, R1, R2 before using them in print
+int r1clone;
+int r2clone;
+
 FILE* obj;
 int lineSizeLimit = 100;
 int label = 1;
@@ -129,7 +133,7 @@ void qNewStackBase() {
 void qPushStack(int bytes) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d;", bytes);
     qLine();
-    stackAdvance = bytes;
+    stackAdvance += bytes;
 }
 
 void qFreeStack() {
@@ -258,14 +262,19 @@ void qMain() {
     qInstruction("R6=R7;");
 }
 
-int qFunctionDeclaration(int count, char** types) {
+int qFunctionDeclaration(int count, char** types, char** names) {
     int functionLabel = label;
     newLabel();
     advanceLabel();
     qNewStackBase();
+    int paramSize = 8;
 
-    if (count > 0) {
-        // load params
+    for(int i = 0; i < count; i++) {
+        char* type = types[i];
+        char* name = names[i];
+        struct Reg* var = searchRegType(name, localVariable);
+        var->value = paramSize * -1;
+        paramSize = paramSize + qSizeOf(type);
     }
 
     return functionLabel;
@@ -281,37 +290,57 @@ void qFunctionArguments(int reg) {
     push(reg, PARAMETER_STACK);
 }
 
-void qCallFunction(char* functionName) {
+int qCallFunction(char* functionName) {
     struct Reg* searchResult = searchRegType(functionName, function);
     int functionLabel = searchResult->value;
-    int paramSize;
+    int paramSize = 8;
+    int returnSize = 0;
 
-    // Calcular param size
+    // For each parameter of the function
+        // paramSize = paramSize + qSizeOf(parameterType);
 
-    qPushStack(paramSize);
-
-    // Asignar params en la pila
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7+4)=R6;");
-    qLine();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7)=%d;", label);
-    qLine();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", functionLabel);
-    qLine();
-
-    newLabel();
-    advanceLabel();
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", paramSize);
-    qLine();
-}
-
-void qCallFunctionNoArgs(char* functionName) {
-    struct Reg* searchResult = searchRegType(functionName, function);
-    int functionLabel = searchResult->value;
+    char* functionType = searchResult->typeReg->regName;
+    returnSize = qSizeOf(functionType);
     
-    qPushStack(8);
+    qPushStack(paramSize + returnSize);
+
+    int nextParameter = 8;
+
+    // For each register in the parameter stack
+        // Load parameter with register parameter stack e.g. int: I(R7+nextParameter)=popRegister()
+        // nextParameter = nextParameter + registerTypeSize. In this case registerTypeSize (an int) is 4.
+        // free reg
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7+4)=R6;");
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "P(R7)=%d;", label);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "GT(%d);", functionLabel);
+    qLine();
+
+    int reg = qAssignRegister();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R7+%d)", reg, qTypeMnemonic(functionType), paramSize);
+    qLine();
+
+    newLabel();
+    advanceLabel();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", paramSize + returnSize);
+    qLine();
+
+    return reg;
+}
+
+int qCallFunctionNoArgs(char* functionName) {
+    struct Reg* searchResult = searchRegType(functionName, function);
+    int functionLabel = searchResult->value;
+    int returnSize = 0;
+
+    char* functionType = searchResult->typeReg->regName;
+    returnSize = qSizeOf(functionType);
+
+    qPushStack(8 + returnSize);
 
     snprintf(line, sizeof(char) * lineSizeLimit, "P(R7+4)=R6;");
     qLine();
@@ -324,57 +353,71 @@ void qCallFunctionNoArgs(char* functionName) {
 
     newLabel();
     advanceLabel();
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", 8);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", 8 + returnSize);
     qLine();
 }
 
-void qMalloc(int reg) {
-
-}
-
-void qSizeOf(char* expression) {
-
+void qReturn(int reg) {
+    // What is the type of reg
+    // What is the parameterSize of the function
+    snprintf(line, sizeof(char) * lineSizeLimit, "type(R6+parameterSize)=R%d", reg);
+    qLine();
 }
 
 void qStartPrint() {
-    registers[0] = 1;
-    registers[1] = 1;
-    registers[2] = 1;
+    if(registers[0] == 1) {
+        r0clone = qAssignRegister();
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R0;", r0clone);
+        qLine();
+    } else {
+        registers[0] = 1;
+    }
+
+    if(registers[1] == 1) {
+        r1clone = qAssignRegister();
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R1;", r1clone);
+        qLine();
+    } else {
+        registers[1] = 1;
+    }
+
+    if(registers[2] == 1) {
+        r2clone = qAssignRegister();
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R2;", r2clone);
+        qLine();
+    } else {
+        registers[2] = 1;
+    }
 }
 
 void qFinishPrint() {
-    registers[0] = 0;
-    registers[1] = 0;
-    registers[2] = 0;
+    if(registers[r0clone] == 1) { 
+        snprintf(line, sizeof(char) * lineSizeLimit, "R0=R%d;", r0clone);
+        qLine();
+        qFreeRegister(r0clone);
+    }
+    if(registers[r1clone] == 1) { 
+        snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", r1clone);
+        qLine();
+        qFreeRegister(r1clone);
+    }
+
+    if(registers[r2clone] == 1) { 
+        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", r2clone);
+        qLine();
+        qFreeRegister(r2clone);
+    }
 }
 
 void qPrint(char* formatString, int reg) {
     qStat();
 
-    qPushStatic(strlen(formatString)+1); //strlen does not count /0
+    qPushStatic(strlen(formatString)+1); //strlen does not count '/0'
     snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", staticTop, formatString);
     qLine();
     
     qCode();
 
-    ////// SAVE REGS //////
-    int r0clone = qAssignRegister();
-    int r1clone = qAssignRegister();
-    int r2clone = qAssignRegister();
-
-    if(reg == 0) reg = r0clone;
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R0;", r0clone);
-    qLine();
-
-    if(reg == 1) reg = r1clone;
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R1;", r1clone);
-    qLine();
-
-    if(reg == 2) reg = r2clone;
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R2;", r2clone);
-    qLine();
-
-    //////  PRINT   //////
     snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
     qLine();
 
@@ -388,23 +431,8 @@ void qPrint(char* formatString, int reg) {
 
     qInstruction("GT(putf_);");
 
-    ///// RECOVER REGS //////
-    
-    snprintf(line, sizeof(char) * lineSizeLimit, "R0=R%d;", r0clone);
-    qLine();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", r1clone);
-    qLine();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", r2clone);
-    qLine();
-    
     newLabel();
     advanceLabel();
-
-    qFreeRegister(r0clone);
-    qFreeRegister(r1clone);
-    qFreeRegister(r2clone);
 }
 
 void qPrintExplicit(char* expression) {
@@ -530,19 +558,7 @@ void qLoadGlobal(int reg, char* identifier) {
         return;
     }
 
-    if (strcmp(entryType, "int") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=I(0x%x);", reg, value);
-    } else if (strcmp(entryType, "float") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(0x%x);", reg, value);
-    } else if (strcmp(entryType, "char") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(0x%x);", reg, value);
-    } else if (strcmp(entryType, "char*") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x);", reg, value);
-    }
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(0x%x);", reg, qTypeMnemonic(entryType), value);
     qLine();    
 }
 
@@ -550,35 +566,11 @@ void qStoreGlobal(int reg, char* identifier) {
     struct Reg* stEntry = searchRegType(identifier, globalVariable);
     struct Reg* entryType = stEntry->typeReg;
 
-    if (strcmp(entryType->regName, "int") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStatic(4);
-            stEntry->value = staticTop;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "I(0x%x)=R%d;", stEntry->value, reg);
-    } else if (strcmp(entryType->regName, "float") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStatic(4);
-            stEntry->value = staticTop;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "F(0x%x)=R%d;", stEntry->value, reg);
-    } else if (strcmp(entryType->regName, "char") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStatic(1);
-            stEntry->value = staticTop;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "U(0x%x)=R%d;", stEntry->value, reg);
-    } else if (strcmp(entryType->regName, "char*") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStatic(1);
-            stEntry->value = staticTop;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "P(0x%x)=R%d;", stEntry->value, reg);
+    if (stEntry->value == notAssigned) {
+        qPushStatic(qSizeOf(entryType->regName));
+        stEntry->value = staticTop;
     }
+    snprintf(line, sizeof(char) * lineSizeLimit, "%c(0x%x)=R%d;", qTypeMnemonic(entryType->regName), stEntry->value, reg);
     qLine();
 }
 
@@ -595,19 +587,8 @@ void qLoadLocal(int reg, char* identifier) {
         return;
     }
 
-    if (strcmp(entryType, "int") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=I(R6-%d);", reg, value);
-    } else if (strcmp(entryType, "float") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=F(R6-%d);", reg, value);
-    } else if (strcmp(entryType, "char") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=U(R6-%d);", reg, value);
-    } else if (strcmp(entryType, "char*") == 0)
-    {
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(R6-%d);", reg, value);
-    }
+    if (value > 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R6-%d);", reg, qTypeMnemonic(entryType), value);
+    if (value < 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R6+%d);", reg, qTypeMnemonic(entryType), abs(value));
     qLine();    
 }
 
@@ -615,35 +596,11 @@ void qStoreLocal(int reg, char* identifier) {
     struct Reg* stEntry = searchRegType(identifier, localVariable);
     struct Reg* entryType = stEntry->typeReg;
 
-    if (strcmp(entryType->regName, "int") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStack(4);
-            stEntry->value = stackAdvance;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "I(R6-%d)=R%d;", stEntry->value, reg);
-    } else if (strcmp(entryType->regName, "float") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStack(4);
-            stEntry->value = stackAdvance;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "F(R6-%d)=R%d;", stEntry->value, reg);
-    } else if (strcmp(entryType->regName, "char") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStack(1);
-            stEntry->value = stackAdvance;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "U(R6-%d)=R%d;", stEntry->value, reg);
-    } else if (strcmp(entryType->regName, "char*") == 0)
-    {
-        if (stEntry->value == notAssigned) {
-            qPushStack(1);
-            stEntry->value = stackAdvance;
-        }
-        snprintf(line, sizeof(char) * lineSizeLimit, "P(R6-%d)=R%d;", stEntry->value, reg);
+    if (stEntry->value == notAssigned) {
+        qPushStack(qSizeOf(entryType->regName));
+        stEntry->value = stackAdvance;
     }
+    snprintf(line, sizeof(char) * lineSizeLimit, "%c(R6-%d)=R%d;", qTypeMnemonic(entryType->regName), stEntry->value, reg);
     qLine();
 }
 
@@ -737,6 +694,40 @@ void qLesserEquals(int reg1, int reg2) {
     qLine();
 }
 
-void qReturn(int reg) {
-    return;
+int qSizeOf(char* typeName) {
+    int returnSize = 0;
+    if (strcmp(typeName, "int")) {
+        returnSize = 4;
+    } else if (strcmp(typeName, "float"))
+    {
+        returnSize = 4;
+    } else if (strcmp(typeName, "char"))
+    {
+        returnSize = 1;
+    } else if (strcmp(typeName, "char*"))
+    {
+        returnSize = 4;
+    } else {
+        yyerror("Unrecognized type");
+    }
+    return returnSize;
+}
+
+char qTypeMnemonic(char* typeName) {
+    char returnChar;
+    if (strcmp(typeName, "int")) {
+        returnChar = 'I';
+    } else if (strcmp(typeName, "float"))
+    {
+        returnChar = 'F';
+    } else if (strcmp(typeName, "char"))
+    {
+        returnChar = 'U';
+    } else if (strcmp(typeName, "char*"))
+    {
+        returnChar = 'P';
+    } else {
+        yyerror("Unrecognized type");
+    }
+    return returnChar;
 }

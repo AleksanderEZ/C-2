@@ -1,0 +1,7 @@
+int sum(int add1, int add2) {
+    return add1 + add2;
+}
+
+int main() {
+    printf("%d", sum(1, 2));
+}

@@ -20,10 +20,8 @@ void qStat();
 void qCode();
 void qMain();
 void qFunctionArguments(int reg);
-void qCallFunction(char* functionName);
-void qCallFunctionNoArgs(char* functionName);
-void qMalloc(int reg);
-void qSizeOf(char* expression);
+int qCallFunction(char* functionName);
+int qCallFunctionNoArgs(char* functionName);
 void qStartPrint();
 void qFinishPrint();
 void qPrint(char* formatString, int reg);
@@ -63,7 +61,9 @@ void qIf(int reg);
 void qElse();
 void qSkipElse();
 void qSkipElseLabel();
-int qFunctionDeclaration(int count, char** types);
+int qFunctionDeclaration(int count, char** types, char** names);
 void qFinishFunction();
+int qSizeOf(char* typeName);
+char qTypeMnemonic(char* typeName);
 
 #endif /* CODE_GENERATION_H */
