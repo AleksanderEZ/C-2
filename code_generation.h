@@ -61,7 +61,7 @@ void qIf(int reg);
 void qElse();
 void qSkipElse();
 void qSkipElseLabel();
-int qFunctionDeclaration(int count, char** types, char** names);
+int qFunctionDeclaration(char* functionName, int count, char** types, char** names);
 void qFinishFunction();
 int qSizeOf(char* typeName);
 char qTypeMnemonic(char* typeName);

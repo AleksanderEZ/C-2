@@ -4,6 +4,7 @@
 #include <string.h>
 
 void yyerror(char* message);
+extern int yylineno;
 
 struct Reg* top = NULL;
 
@@ -89,10 +90,12 @@ void removeLast() {
 
 void closeBlock() {
     dump("--CLOSING BLOCK--\n");
+    printf("In line %d\n", yylineno);
     startClosingBlock();
 }
 
 void startClosingBlock() {
+    if (top == NULL || top->next == NULL) yyerror("ST Empty");
     struct Reg *p = top;
     while(p->next->next != NULL){
         p = p->next;

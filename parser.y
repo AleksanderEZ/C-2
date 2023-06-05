@@ -30,6 +30,7 @@ void initST() {
 }
 
 void dummyReg() {
+  printf("Opening block %d\n", yylineno);
   char* openBlock;
   variableSwitch = localVariable;
   openBlock = strdup("openBlock");
@@ -57,7 +58,6 @@ void functionDeclaration(char* typeName, char* name, int line) {
     while (token != NULL) {
       definitiveToken = strdup(token);
       tokens[i] = definitiveToken;
-      printf("%s\n", tokens[i]);
       i++;
       token = strtok(NULL, ",");
     }
@@ -65,18 +65,19 @@ void functionDeclaration(char* typeName, char* name, int line) {
     newFunction(definitiveFunctionName, function, t, line, i);
 
     variableSwitch = localVariable;
-    char* type;
+    char* typeName;
     char* definitiveType;
     char* parameterName;
     char* definitiveParameterName;
     char* types[i];
     char* names[i];
     for(int j = 0; j < i; j++){
-      type = strtok(tokens[j], " ");
+      typeName = strtok(tokens[j], " ");
       parameterName = strtok(NULL, " ");
-      definitiveType = strdup(type);
+      definitiveType = strdup(typeName);
       definitiveParameterName = strdup(parameterName);
-      declaration(definitiveType, definitiveParameterName, line);
+      struct Reg* paramType = searchRegType(definitiveType, type);
+      newParameter(definitiveParameterName, localVariable, paramType, line);
       free(tokens[j]);
       types[j] = definitiveType;
       names[j] = definitiveParameterName;
@@ -86,7 +87,7 @@ void functionDeclaration(char* typeName, char* name, int line) {
       qMain();
       functionResult->value = 0;
     } else {
-      functionResult->value = qFunctionDeclaration(i, types, names);
+      functionResult->value = qFunctionDeclaration(definitiveFunctionName, i, types, names);
     }
   } else {
     newFunction(definitiveFunctionName, function, t, line, 0);
@@ -95,9 +96,10 @@ void functionDeclaration(char* typeName, char* name, int line) {
       qMain();
       functionResult->value = 0;
     } else {
-      functionResult->value = qFunctionDeclaration(0, NULL, NULL);
+      functionResult->value = qFunctionDeclaration(definitiveFunctionName, 0, NULL, NULL);
     }
   }
+  free(name);
 }
 
 void checkFunExists(char* name) {
@@ -221,8 +223,8 @@ while_header
 
 if
   : if_header simple_instruction SEMICOLON { closeBlock(); }
-  | if_header simple_instruction SEMICOLON { qSkipElse(); } else { closeBlock(); }
-  | if_header instruction_block { closeBlock(); }
+  | if_header simple_instruction SEMICOLON { qSkipElse(); closeBlock(); } else { closeBlock(); }
+  | if_header instruction_block
   | if_header instruction_block { qSkipElse(); } else { closeBlock(); }
   ;
 
@@ -286,7 +288,7 @@ arguments
 
 return
   : RETURN expression { qReturn($2); }
-  | RETURN
+  | RETURN { qReturn(400); }
   ;
 
 // array
@@ -321,17 +323,17 @@ function_header
   ;
 
 function_subheader
-  : IDENTIFIER OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS { char* pointer = malloc(400 * sizeof(char)); strcat(pointer, $1); strcat(pointer, "("); strcat(pointer, $3); $$ = pointer; }
-  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { char* pointer = malloc(400 * sizeof(char)); strcat(pointer, $1); strcat(pointer, "("); $$ = pointer; }
+  : IDENTIFIER OPEN_PARENTHESIS parameters CLOSE_PARENTHESIS { char* pointer = calloc(1, 400 * sizeof(char)); strcat(pointer, $1); free($1); strcat(pointer, "("); strcat(pointer, $3); free($3); $$ = pointer; }
+  | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { char* pointer = calloc(1, 400 * sizeof(char)); strcat(pointer, $1); free($1); strcat(pointer, "("); $$ = pointer; }
   ;
 
 parameters
-  : type IDENTIFIER { char* pointer = malloc(50 * sizeof(char)); strcat(pointer, $1); strcat(pointer, " "); strcat(pointer, $2); $$ = pointer; }
-  | parameters COMMA type IDENTIFIER { char* pointer = malloc(200 * sizeof(char)); strcat(pointer, $1); strcat(pointer, ","); strcat(pointer, $3); strcat(pointer, " "), strcat(pointer, $4); $$ = pointer;}
+  : type IDENTIFIER { char* pointer = calloc(1, 50 * sizeof(char)); strcat(pointer, $1); strcat(pointer, " "); strcat(pointer, $2); free($2); $$ = pointer; }
+  | parameters COMMA type IDENTIFIER { char* pointer = calloc(1, 200 * sizeof(char)); strcat(pointer, $1); free($1); strcat(pointer, ","); strcat(pointer, $3); strcat(pointer, " "), strcat(pointer, $4); free($4); $$ = pointer;}
   ;
 
 type
-  : type ASTERISK { char* pointer = malloc(8*sizeof(char)); pointer = strdup($1); strcat(pointer, "*"); newReg(pointer, type, NULL, yylineno); $$ = pointer; }
+  : type ASTERISK { char* pointer = calloc(1, 8*sizeof(char)); pointer = strdup($1); strcat(pointer, "*"); newReg(pointer, type, NULL, yylineno); $$ = pointer; }
   | INT { $$ = "int";}
   | CHAR { $$ = "char";}
   | FLOAT { $$ = "float";}
