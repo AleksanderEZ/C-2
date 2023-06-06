@@ -20,9 +20,7 @@ int topSkipElse = -1;
 int topAdvance = -1;
 int topParameter = -1;
 
-int r0clone;  //save R0, R1, R2 before using them in print
-int r1clone;
-int r2clone;
+int rClone;  //save R0, R1, R2 before using them in print
 
 FILE* obj;
 int lineSizeLimit = 100;
@@ -146,6 +144,7 @@ void qFreeStack() {
 
 void qRecoverBase() {
     qInstruction("R6=P(R7+4);");
+    if (topAdvance == -1) return;
     stackAdvance = pop(ADVANCE_STACK);
 }
 
@@ -255,6 +254,7 @@ void qCode() {
 }
 
 void qMain() {
+    currentFunction = "main";
     int auxLabel = label;
     label = 0;
     newLabel();
@@ -276,7 +276,7 @@ int qFunctionDeclaration(char* functionName, int count, char** types, char** nam
     for(int i = 0; i < count; i++) {
         char* type = types[i];
         char* name = names[i];
-        struct Reg* var = searchRegType(name, localVariable);
+        struct Reg* var = searchRegType(name, parameter);
         var->value = paramSize * -1;
         paramSize = paramSize + qSizeOf(type);
     }
@@ -286,8 +286,10 @@ int qFunctionDeclaration(char* functionName, int count, char** types, char** nam
 
 void qFinishFunction() {
     qFreeStack();
-    qRecoverBase();
-    qFunctionReturn();
+    if (strcmp(currentFunction, "main") != 0) {
+        qRecoverBase();
+        qFunctionReturn();
+    }
     currentFunction = NULL;
 }
 
@@ -337,7 +339,7 @@ int qCallFunction(char* functionName) {
         char* currentType = types[n];
         snprintf(line, sizeof(char) * lineSizeLimit, "%c(R7+%d)=R%d;", qTypeMnemonic(currentType), nextParameter, parameters[n]);
         qLine();
-        newParameter(strdup(names[n]), localVariable, searchRegType(types[n], type), yylineno);
+        newParameter(strdup(names[n]), searchRegType(types[n], type), yylineno);
         nextParameter = nextParameter + qSizeOf(currentType);
         qFreeRegister(parameters[n]);
         n = n + 1;
@@ -451,60 +453,70 @@ void qReturn(int reg) {
     qFreeRegister(reg);
 }
 
-void qStartPrint() {
-
-    for (int i = 0; i < 3; i++)
-    {
-        if (registers[i] == 0) {
-            registers[i] = 1;
-        }
+void qStartPrint(int reg) {
+    for(int i = 0; i < 3; i++) {
+        registers[i] = 1;
     }
-
-    if(registers[0] == 1) {
-        r0clone = qAssignRegister();
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R0;", r0clone);
+    if (reg == 0) {
+        rClone = qAssignRegister();
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R0;", rClone);
         qLine();
-    } else {
-        registers[0] = 1;
-    }
-
-    if(registers[1] == 1) {
-        r1clone = qAssignRegister();
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R1;", r1clone);
+    } else if (reg == 1) {
+        rClone = qAssignRegister();
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R1;", rClone);
         qLine();
-    } else {
-        registers[1] = 1;
-    }
-
-    if(registers[2] == 1) {
-        r2clone = qAssignRegister();
-        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R2;", r2clone);
+    } else if (reg == 2) {
+        rClone = qAssignRegister();
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R2;", rClone);
         qLine();
-    } else {
-        registers[2] = 1;
     }
 }
 
-void qFinishPrint() {
-    if(registers[r0clone] == 1) { 
-        snprintf(line, sizeof(char) * lineSizeLimit, "R0=R%d;", r0clone);
-        qLine();
-        qFreeRegister(r0clone);
-    }
-    if(registers[r1clone] == 1) { 
-        snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", r1clone);
-        qLine();
-        qFreeRegister(r1clone);
-    }
-
-    if(registers[r2clone] == 1) { 
-        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", r2clone);
-        qLine();
-        qFreeRegister(r2clone);
-    }
+void qFinishPrint(int reg) {
+    qFreeRegister(rClone);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d;", reg, rClone);
+    qLine();
+    if (reg != 0) qFreeRegister(0);
+    if (reg != 1) qFreeRegister(1);
+    if (reg != 2) qFreeRegister(2);
 }
 
-void qPrint(char* formatString, int reg) {
+void qPrint(int address, int reg) {
+    if (reg != -1) qStartPrint(reg);
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", address);
+    qLine();
+
+    int originalReg = reg;
+    if (reg != -1) {
+        if (reg == 1 || reg == 2 || reg == 0) reg = rClone;
+        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", reg);
+        qLine();
+    }
+
+    qInstruction("GT(putf_);");
+
+    newLabel();
+    advanceLabel();
+
+    if (reg != -1) qFinishPrint(originalReg);
+}
+
+void qPrintExplicit(char* expression) {
+    qStat();
+
+    qPushStatic(strlen(expression)+1); //strlen does not count '/0'
+    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", staticTop, expression);
+    qLine();
+    
+    qCode();
+    qPrint(staticTop, -1);
+}
+
+void qPrintExplicitFormat(char* formatString, int reg) {
     qStat();
 
     qPushStatic(strlen(formatString)+1); //strlen does not count '/0'
@@ -512,57 +524,14 @@ void qPrint(char* formatString, int reg) {
     qLine();
     
     qCode();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
-    qLine();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", staticTop);
-    qLine();
-
-    if (reg != -1 ) {
-        if (reg == 0) reg = r0clone; 
-        if (reg == 1) reg = r1clone; 
-        if (reg == 2) reg = r2clone; 
-        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", reg);
-        qLine();
-    }
-
-    qInstruction("GT(putf_);");
-
-    newLabel();
-    advanceLabel();
-}
-
-void qPrintExplicit(char* expression) {
-    qPrint(expression, -1);
-}
-
-void qPrintExplicitFormat(char* formatString, int reg) {
-    qPrint(formatString, reg);
+    qPrint(staticTop, reg);
 }
 
 void qPrintImplicitFormat(char* identifier, int reg) {
     struct Reg* result = search(identifier);
     if (strcmp(result->typeReg->regName, "char*") != 0) yyerror("Identifier not of string type");
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
-    qLine();
-
-    snprintf(line, sizeof(char) * lineSizeLimit, "R1=0x%x;", result->value);
-    qLine();
-
-    if (reg != -1) {
-        if (reg == 0) reg = r0clone; 
-        if (reg == 1) reg = r1clone; 
-        if (reg == 2) reg = r2clone; 
-        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", reg);
-        qLine();
-    }
-
-    qInstruction("GT(putf_);");
-
-    newLabel();
-    advanceLabel();
+    qPrint(result->value, reg);
 }
 
 void qStartWhile() {
@@ -625,7 +594,7 @@ void qLoadVar(int reg, char* identifier) {
     if (result == NULL) {
         yyerror("Variable not declared");
     }
-    if (result->type == localVariable) {
+    if (result->type == localVariable || result->type == parameter) {
         qLoadLocal(reg, identifier);
     }
     if (result->type == globalVariable) {
@@ -638,7 +607,7 @@ void qStoreVar(int reg, char* identifier) {
     if (result == NULL) {
         yyerror("Variable not declared");
     }
-    if (result->type == localVariable) {
+    if (result->type == localVariable || result->type == parameter) {
         qStoreLocal(reg, identifier);
     }
     if (result->type == globalVariable) {
@@ -677,6 +646,7 @@ void qStoreGlobal(int reg, char* identifier) {
 
 void qLoadLocal(int reg, char* identifier) {
     struct Reg* stEntry = searchRegType(identifier, localVariable);
+    if (stEntry == NULL) stEntry = searchRegType(identifier, parameter);
     char* entryType = stEntry->typeReg->regName;
     int value = stEntry->value;
 
@@ -695,6 +665,7 @@ void qLoadLocal(int reg, char* identifier) {
 
 void qStoreLocal(int reg, char* identifier) {
     struct Reg* stEntry = searchRegType(identifier, localVariable);
+    if (stEntry == NULL) stEntry = searchRegType(identifier, parameter);
     struct Reg* entryType = stEntry->typeReg;
 
     if (stEntry->value == notAssigned) {

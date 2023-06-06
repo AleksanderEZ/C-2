@@ -27,11 +27,11 @@ struct Reg* searchRegType(char* regName, enum RegType regType) {
     if(p != NULL && p->type==regType) return p; else return NULL;
 }
 
-void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
-    if(search(regName) != NULL && strcmp(regName, "openBlock") != 0) yyerror("Name already defined");
+void newReg(char* regName, enum RegType regType, struct Reg* typeReg, int line) {
+    if(searchRegType(regName, regType) != NULL && searchRegType(regName, type) != NULL && strcmp(regName, "openBlock") != 0) yyerror("Name already defined");
     struct Reg* new = (struct Reg*) malloc(sizeof(struct Reg));
     new->regName = regName;
-    new->type = type;
+    new->type = regType;
     new->value = 0x24001;
     if(strcmp(regName, "openBlock") != 0) {
         new->typeReg = typeReg;
@@ -49,10 +49,10 @@ void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line) {
     }
 }
 
-void newParameter(char* regName, enum RegType type, struct Reg* typeReg, int line) {
+void newParameter(char* regName, struct Reg* typeReg, int line) {
     struct Reg* new = (struct Reg*) malloc(sizeof(struct Reg));
     new->regName = regName;
-    new->type = type;
+    new->type = parameter;
     new->value = 0x24001;
     new->typeReg = typeReg;
     new->lineOfDeclaration = line;

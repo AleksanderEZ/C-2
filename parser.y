@@ -77,7 +77,7 @@ void functionDeclaration(char* typeName, char* name, int line) {
       definitiveType = strdup(typeName);
       definitiveParameterName = strdup(parameterName);
       struct Reg* paramType = searchRegType(definitiveType, type);
-      newParameter(definitiveParameterName, localVariable, paramType, line);
+      newParameter(definitiveParameterName, paramType, line);
       free(tokens[j]);
       types[j] = definitiveType;
       names[j] = definitiveParameterName;
@@ -107,7 +107,7 @@ void checkFunExists(char* name) {
 }
 
 void checkVarExists(char* name) {
-  if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL) yyerror("Variable has not been declared");
+  if (searchRegType(name, globalVariable) == NULL && searchRegType(name, localVariable) == NULL && searchRegType(name, parameter) == NULL) yyerror("Variable has not been declared");
 }
 
 %}
@@ -222,10 +222,10 @@ while_header
   ;
 
 if
-  : if_header simple_instruction SEMICOLON { closeBlock(); }
-  | if_header simple_instruction SEMICOLON { qSkipElse(); closeBlock(); } else { closeBlock(); }
-  | if_header instruction_block
-  | if_header instruction_block { qSkipElse(); } else { closeBlock(); }
+  : if_header simple_instruction SEMICOLON { qElse(); closeBlock(); }
+  | if_header simple_instruction SEMICOLON { qSkipElse(); closeBlock(); } else
+  | if_header instruction_block { qElse(); }
+  | if_header instruction_block { qSkipElse(); } else
   ;
 
 if_header
@@ -277,9 +277,9 @@ function_call
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); $$ = qCallFunctionNoArgs($1); }
 //  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
 //  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qStartPrint(); qPrintExplicitFormat($3, $5); qFreeRegister($5); qFinishPrint(); }
-  | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qStartPrint(); qPrintExplicit($3); qFinishPrint(); }
-  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qStartPrint(); qPrintImplicitFormat($3, $5); qFreeRegister($5); qFinishPrint(); }
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5); qFreeRegister($5);}
+  | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qPrintExplicit($3); }
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); qFreeRegister($5);}
   ;
 
 arguments

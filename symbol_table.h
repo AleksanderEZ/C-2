@@ -1,7 +1,7 @@
 #ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
-enum RegType { type, globalVariable, localVariable, function };
+enum RegType { type, globalVariable, localVariable, function, parameter };
 
 struct Reg {
     char* regName;
@@ -18,7 +18,7 @@ struct Reg* getTop();
 struct Reg* search(char* regName);
 struct Reg* searchRegType(char* id, enum RegType regType);
 void newReg(char* regName, enum RegType type, struct Reg* typeReg, int line);
-void newParameter(char* regName, enum RegType type, struct Reg* typeReg, int line);
+void newParameter(char* regName, struct Reg* typeReg, int line);
 void newFunction(char* regName, enum RegType type, struct Reg* typeReg, int line, int nParameters);
 void removeLast();
 void closeBlock();

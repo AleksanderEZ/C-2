@@ -28,11 +28,13 @@ void printFib(int n)
     }
     // when the number of terms is 2
     else if (n == 2) {
-        printf("%d %d", 0, 1);
+        printf("%d ", 0);
+        printf("%d ", 1);
     }
     // number of terms greater than 2
     else {
-        printf("%d %d ", 0, 1);
+        printf("%d ", 0);
+        printf("%d ", 1);
         fib(n);
     }
     return;
@@ -41,6 +43,7 @@ void printFib(int n)
 // driver code
 int main()
 {
+    prev1 = 1; //PROVISIONAL. LAS GLOBALES NO SE ESTAN ASIGNANDO ARRIBA :(
     int n = 9;
     printFib(n);
     return 0;

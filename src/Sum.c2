@@ -3,5 +3,7 @@ int sum(int add1, int add2) {
 }
 
 int main() {
-    printf("%d", sum(1, 2));
+    printf("%d\n", sum(1, 2));
+    int n = 5 + 3;
+    printf("%d\n", n);
 }
