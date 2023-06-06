@@ -8,6 +8,5 @@ github.pub
 *.zip
 iq
 .vscode
-Q
 *.q.c
 qmachine

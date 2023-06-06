@@ -1,0 +1,566 @@
+Qman.txt v3.7.3 (c) 2002..2009 Jos� Fortes G�lvez
+
+
+
+                         C�DIGO Q
+                         ========
+
+En este manual se define y se muestra la utilizaci�n del c�digo Q,
+lenguaje objeto inspirado en las cu�druplas del c�digo intermedio de
+los compiladores, y que puede ser tanto interpretado como directamente
+compilado en C.
+
+
+0. NOVEDADES EN LAS ULTIMAS VERSIONES
+
+3.7.3
+
+Permite la instalaci�n en Linux de 64 bits, manteni�ndose la
+funcionalidad.  Por compatibilidad, se sigue suministrando asimismo el
+.o de 32 bits de la distribuci�n 3.7.2.
+
+3.7.2
+
+Vuelve a funcionar la instrucci�n interactiva del int�rprete "le".
+
+3.7.1
+
+Se corrige en el int�rprete la conversi�n de literal de n�mero real a
+representaci�n interna --GCC usa por defecto C90, no funcionando
+strtold() correctamente-- y se mejoran algunos aspectos menores, como
+preguntar si realmente se quiere salir. Se eliminan todos los avisos
+de la opci�n -Wall.
+
+3.7
+
+En resumen: ahora se usa directamente las etiquetas 0 a -2, se
+considera que los #include no forman t�cnicamente parte de Q, los
+par�metros a las funciones de Qlib se pasan en registros, todos los
+errores incluyen mensaje y el int�rprete permite analizar la situaci�n
+en que se ha producido un error de ejecuci�n.  En m�s detalle:
+
+- Se precisa m�s la definici�n del c�digo Q, y en particular que los
+nombres de macro (INI, FIN, etc.)  para las etiquetas, etc. NO forman
+parte del lenguaje Q.  Para que no haya confusi�n, sus #define han
+sido retirados de Qlib.h.  De todas formas, si se desea, pueden
+ponerse en el propio programa (como por ejemplo se hace en fibo1.q.c)
+o volverse a poner en Qlib.h, como cualquier otra etiqueta definida
+por el usuario.  Todas las declaraciones de Qlib.h son opcionales,
+esto es, Qlib.h podr�a estar vac�o o contener s�lo comentarios.
+
+- La "llamada al sistema" -2 (__fin) y la funci�n de biblioteca -10
+(exit_) son ahora equivalentes --ambas salen con exit(R0)--, por lo
+que exit_ probablemente desaparezca en futuras versiones.
+
+- Los par�metros de las funciones iniciales de Qlib se pasan ahora en
+registros, de forma que son utilizables independientemente de la pila.
+No obstante, las funciones generadas por el compilador usar�n
+normalmente la pila para los par�metros.  Por supuesto, es posible
+a�adir nuevas funciones a Qlib que utilicen un protocolo distinto... o
+modificar el actual.
+
+- Los mensajes de error, tanto de Q.h como de IQ, ahora son
+explicativos :) El int�rprete es ahora a�n m�s �til para depurar, pues
+permite conocer la l�nea en que se produjo el error y visualizar el
+estado de memoria y registros en ese momento, lo que no es posible si
+compilamos el programa Q.  Ver secci�n 2.4.1.
+
+
+3.6.0
+
+El objetivo de la nueva version 3.6 es que el int�rprete-depurador IQ
+pueda incorporar las modificaciones que se realicen en Qlib sin
+necesidad de recompilar el fuente de IQ.
+
+En resumen, desde el punto de vista de la utilizaci�n, el �nico cambio
+consiste en que ahora hay que incluir Qlib.c a la hora de compilar,
+tanto los programas en Q como el int�rprete-depurador IQ.
+
+En m�s detalle, los cambios han sido los siguientes:
+
+- Qlib ahora esta dividida en dos ficheros, Qlib.h y Qlib.c.  En el
+primero se definen las etiquetas y en el segundo se implementan las
+correspondientes rutinas de biblioteca y auxiliares.  Ver secci�n 2.5.
+
+- Aunque el contenido del fichero Q.h ha cambiado, ni la arquitectura
+de la maquina Q ni el lenguaje Q han cambiado en nada.
+
+- Para obtener el ejecutable del interprete-depurador IQ ahora se
+utilizan el objeto ya compilado de �ste, IQ.o, as� como Qlib.c.  Ver
+secci�n 2.3.
+
+- Ahora hay que incluir Qlib.c en el comando de compilaci�n de
+programas en Q.  Ver secci�n 2.4.
+
+
+1. EL LENGUAJE Y LA M�QUINA Q
+
+Primero definiremos el lenguaje y la m�quina Q.  En posteriores
+secciones entraremos en el entorno de ejecuci�n (compilador,
+int�rprete y biblioteca).
+
+
+1.1 PROGRAMAS EN Q
+
+En el caso m�s simple ser�a:
+
+  BEGIN
+   <etiquetas e instrucciones>
+  END
+
+Y en el caso general, una secuencia de STAT y CODE alternados, de
+�ndices consecutivos comenzando en 0 (el �ndice de cada CODE debe
+corresponder con el del STAT anterior), pudiendo terminar tanto con un
+STAT como con un CODE.
+
+  BEGIN
+   <etiquetas e instrucciones>
+  STAT(0) 
+   <datos est�ticos>
+  CODE(0)   
+   <etiquetas e instrucciones>
+  STAT(1) 
+   <datos est�ticos>
+   .
+   .
+  END
+
+El formato es libre, si bien se recomienda colocar una sola 
+instrucci�n o declaraci�n en cada l�nea, precedida de una tabulaci�n, 
+y ubicar al comienzo de l�nea �nicamente los BEGIN, STAT, CODE,
+END, as� como etiquetas.
+
+Las l�neas de texto comenzadas con el car�cter '#' se consideran 
+comentarios.
+
+
+1.1.1. CARGA Y EJECUCI�N DE UN PROGRAMA EN Q
+
+La ejecuci�n de un programa Q tiene dos fases: carga de datos 
+est�ticos y ejecuci�n de instrucciones.
+
+En la fase de carga se asigna autom�ticamente memoria y se cargan los 
+valores de todos los <datos est�ticos> declarados.
+
+A continuaci�n comienza la ejecuci�n de las instrucciones, de forma
+que todas ellas se considerar�n formando una sola secuencia, esto es,
+a la �ltima antes de STAT(i) sigue la primera despu�s de CODE(i).
+
+
+1.2. LA M�QUINA Q
+
+La m�quina Q dispone de los siguientes registros:
+
+   int    R0 .. R7
+   double RR0 .. RR3
+
+Las direcciones de memoria de datos de la m�quina Q son de 32 bits,
+aunque s�lo parte ser� realmente accesible, en forma de dos segmentos
+no solapados.  Uno de ellos contiene la zona est�tica junto con la
+pila.  El otro, ubicado en direcciones num�ricamente m�s altas,
+contiene el heap.
+
+Durante la fase de carga se inicializa la zona est�tica, que cubre 
+desde la direcci�n Z-1 inclusive (en principio, Z=0x12000, pero 
+puede modificarse en Qlib.h), hacia direcciones num�ricamente 
+menores, hasta la suficiente para albergar todas las 
+declaraciones de <datos est�ticos>.  Inmediatamente a continuaci�n 
+se encuentra la pila, inicialmente vac�a, y R7 se encontrar� 
+apropiadamente inicializado y alineado a una direcci�n m�ltiplo 
+de 4 pr�xima (inferior o igual) a la direcci�n m�s baja declarada
+para datos est�ticos.  En caso de no existir declaraciones 
+est�ticas, R7 se inicializa al valor de Z.
+
+R7 apunta siempre a la direcci�n n�mericamente m�s baja de la pila; 
+posici�n que ocupa el octeto de la cima.  Como la pila crece hacia 
+posiciones num�ricamente decrecientes, para extender o reducir su 
+tama�o en n octetos simplemente se ha de decrementar o incrementar, 
+respectivamente, en n el valor de R7.  El valor resultante no debe 
+ser inferior a 0 ni superior a Z, y cada extensi�n efectiva de 
+tama�o no puede superar los 0x10000 (64K) octetos.
+
+En realidad, la memoria asignada a la pila no se extiende por el 
+mero hecho de disminuir R7, sino cuando se produce un acceso a una 
+posici�n de pila no asignada.  Cada extensi�n se realiza en bloque, 
+de tama�o el menor m�ltiplo de 256 octetos de forma que se cubra 
+hasta R7 al menos.  Aunque posible, es muy poco recomendable, y 
+normalmente un error del programa, acceder a una direcci�n asignada 
+(o asignable) inferior a R7.  No se puede acceder a una direcci�n 
+inferior a R7 no asignable.
+
+El heap se encuentra inicialmente vac�o.  Su utilizaci�n s�lo tiene 
+lugar durante la ejecuci�n, mediante el uso de Qlib.  Crece hacia 
+direcciones num�ricamente decrecientes, a partir de H-1 inclusive 
+(por defecto, H=0x24000; ver Qlib.h), no debiendo rebasar Z.
+
+Si se redefinen los valores de H o Z en Qlib.h, hay que respetar 
+que H > Z > 0 y que ambos sean m�ltiplos de alineamiento mayor (4).  
+T�ngase en cuenta que el tama�o m�ximo del heap es H-Z, y el de la 
+zona est�tica m�s pila, Z.
+
+
+1.3. ETIQUETAS E INSTRUCCIONES
+
+Cada <etiquetas e instrucciones> indicado anterioremente representa
+una secuencia de etiquetas e instrucciones, en cualquier orden y
+longitud, inclusive nula.
+
+Las instrucciones en Q s�lo pueden ser de los tipos siguientes:
+
+  r = e;
+  r = m(e);
+  m(e) = v;
+  GT(v);
+  IF (e) GT(v);
+
+donde r ha de ser un registro de la m�quina Q, y e una expresi�n de
+alguna de las formas siguientes
+
+  v
+  x v
+  v x v
+
+Cada v puede ser tanto un registro como una constante de C (secci�n
+6.4.4 de norma de C99, excepto 6.4.4.3 y las "long long") posiblemente
+precedida de signo.  En cuanto a x, ha de ser un operador de C unario
+aritm�tico (secci�n 6.5.3.3) o binario (secciones 6.5.5 a 6.5.14).  
+
+La asignaci�n (=) se realiza almacenando el resultado de la expresi�n
+de la derecha en el lugar indicado a la izquierda.  Al realizar una
+operaci�n o asignaci�n entre distintos tipos de datos, se producir� la
+correspondiente conversi�n de acuerdo con el lenguaje C.
+
+Con m(e) se lee o escribe (seg�n de qu� lado del = se encuentre) un
+dato num�rico en la memoria de la m�quina Q.  Si llamamos d al
+unsigned de 32 bits resultado de la evaluaci�n (y posible ulterior
+conversi�n a unsigned) de la expresi�n e, con m(e) se accede a los
+octetos ubicados en la direcci�n d y siguientes num�ricamente
+crecientes, en orden "big endian" (esto es, en d se almacena el octeto
+m�s significativo).  En cuanto a m, se trata de una letra que depende
+del tipo de datos que vamos a leer o escribir en memoria, de forma que
+(con GCC para IA-32):
+
+  P(e)   unsigned int    4 octetos   puntero (entero no negativo)
+  U(e)   unsigned char   1 octeto    car�cter (entero no negativo)
+  S(e)   short           2 octetos   entero
+  I(e)   int             4 octetos   entero
+  J(e)   long int        4 octetos   entero
+  F(e)   float           4 octetos   coma flotante
+  D(e)   double          8 octetos   coma flotante
+  E(e)   long double    12 octetos   coma flotante
+
+No est� definido el funcionamiento al acceder a alg�n octeto fuera de
+la zona asignada; normalmente se producir� un "trap" y el programa
+abortar�.
+
+Es conveniente (mayor rapidez), aunque no necesario, alinear los datos
+en memoria.  Los tipos de datos de 1 octeto no precisan alineaci�n,
+los de 2 octetos ir�an en direcciones m�ltiplo de 2, y los de 4
+octetos o m�s en direcciones m�ltiplo de 4.
+
+Las declaraciones de etiqueta en Q son de la forma
+
+   L n:      
+
+donde n es un n�mero entero no negativo, ya que las etiquetas
+negativas est�n reservadas para el sistema y para las funciones de la
+biblioteca Qlib.  No se pueden repetir declaraciones de una misma
+etiqueta. 
+
+GT(v) indica saltar a la primera instrucci�n en Q (o de funci�n de
+Qlib) que sigue a la declaraci�n de etiqueta de valor int resultado de
+la evaluaci�n (y posible conversi�n) de v.  IF(e) interpreta como
+falso (0) o verdadero (no 0) el int resultado de la evaluaci�n (y
+posible convesi�n) de e.  En caso verdadero, o ausencia de IF, se
+ejecutar� el salto que indica el GT.
+
+La declaraci�n de etiqueta 0 es obligatoria y se�ala la primera
+instrucci�n a ejecutar en un programa Q.  Para finalizar, lo m�s
+apropiado es GT(-2) (equivalente a la llamada al sistema "exit"), con
+un c�digo de salida en R0.  Se considera un error que se alcance END
+(o el ENDLIB), por lo que en ese caso se termina (aborta) el programa;
+esto mismo puede provocarse con un GT(-3).  El salto GT(-1) tiene el
+efecto de parar la ejecuci�n en interpretaci�n interactiva, no
+teniendo efecto (hace de NOP) en los casos de interpretaci�n no
+interactiva o de compilado.
+
+Es posible utilizar GT con otras etiquetas negativas, siempre que
+est�n definidas en la Qlib (ver m�s adelante).
+
+El espacio de direcciones de datos es independiente del de etiquetas 
+de instrucciones.
+
+
+1.4. DATOS EST�TICOS
+
+Cada <datos est�ticos> indicado anteriormente representa cero o m�s
+declaraciones de datos de zona est�tica, que pueden ser de los tipos 
+que se indican a continuaci�n.  En todos los casos, las d representan
+constantes unsigned int con las direcciones iniciales de los tramos de 
+memoria a reservar, que normalmente ocupar�n posiciones sucesivas
+(teniendo en cuenta el conveniente alineamiento de datos), no
+solapadas, y siempre por debajo de Z.
+
+  MEM(d,b);
+
+  donde b es un int con el n�mero de octetos del tramo.  No inicializa 
+  el tramo (variables est�ticas, p.e.)
+
+  FIL(d,b,w); 
+  como MEM, si bien inicializando cada octeto del tramo con el valor 
+  del unsigned char w (p.e. 0)
+  
+  DAT(d,c,w); 
+  donde c es una letra (no entrecomillada) que indica un tipo de 
+  dato (P, U, S, I, J, F, D � E), de cuyo tama�o ser� el tramo a 
+  reservar, el cual se inicializa con el valor de w
+  
+  STR(d,r);   
+  donde r es un literal de ristra de caracteres en formato C (secci�n 
+  6.4.5 de C99) con la que se inicializa un tramo a reservar de
+  tama�o strlen(r)+1
+
+Los formatos de d, b y w son constantes de C como en las instrucciones, 
+y en caso de no ser del tipo esperado se realiza la misma conversi�n 
+que en una asignaci�n.
+
+Como se ha indicado, los valores num�ricos se almacenan "big endian",
+a partir del argumento de direcci�n inicial d.  Igualmente, en el caso
+de las ristras, el car�cter m�s a la izquierda de r ocupar� la direcci�n 
+d, y los siguientes a su derecha las siguientes posiciones de memoria de 
+direcciones num�ricamente crecientes, a�adiendo al final un octeto a 0.
+
+Declaraciones posteriores prevalecen frente a las anteriores (o sea,
+sobreescriben) si se solapan posiciones de memoria.
+
+Y aqu� termina la definici�n del lenguaje y la m�quina Q.
+
+
+2. ENTORNO DE EJECUCI�N
+
+Escribiremos normalmente los programas en Q en un fichero de texto con
+extensi�n ".q.c".  Normalmente, en dicho fichero, el programa en Q
+vendr� precedido al menos por la l�nea
+
+#include "Q.h"
+
+para as� poder compilarlo directamente con GCC o ejecutarlo
+directamente usando el int�rprete-depurador interactivo IQ.
+
+Es importante recordar que para verificar que un programa est� escrito
+en Q, ha de comprobarse que IQ lo acepta.
+
+
+2.1. MACROS (CPP) Y C�DIGO EN C
+
+Para escribir programas en Q aprovechamos que al compilar en C se
+ejecuta previamente un preprocesador (ver secci�n 6.10 en norma C99 y
+cpp de Linux), el cual nos permite emplear comentarios, macros e
+inclusi�n.  El resultado del preprocesado deber� ser en todo caso
+c�digo Q de acuerdo con la definici�n de la secci�n 1.
+
+En realidad, todo programa en Q debe llevar comentarios, ya que
+sem�nticamente es de un bajo nivel an�logo al del lenguaje
+ensamblador.  Pues bien, es inmediatamente posible ponerlos en formato
+del lenguaje C, ya que estrictamente hablando �estamos programando en
+lenguaje C!
+
+Por la misma raz�n, es asimismo posible definir macros para hacer el
+c�digo mas f�cil de seguir, por ejemplo en relacion con el fuente o en
+relaci�n con el uso especifico de algunos registros, p.e.
+
+#define C R7  // C = direcci�n de la cima de la pila 
+
+Es igualmente posible usar #include para incorporar segmentos de
+c�digo preconstruido que pueden contener definiciones, rutinas
+auxiliares o m�dulos espec�ficos de biblioteca, que en todo caso
+habr�n de estar escritos en c�digo Q.  
+
+En definitiva, una vez incorporados dichos #include, expandidas las 
+macros de tales #define y eliminados los comentarios, el resultado ha
+de ser c�digo Q.  Es importante tener en cuenta, si queremos
+implementar un int�rprete del lenguaje Q, tal y como se halla definido
+en la secci�n 1, que antes de pasar el preprocesador deberemos
+sustituir el include de "Q.h" por "Qlib.h".  Entre otros, esto permite
+utilizar las macros de Qlib.h desde el fuente Q.
+
+Puesto que Q es un subconjunto de C, es posible a�adir a un programa 
+en Q otras instrucciones con un formato distinto del aqu� especificado,
+o incluso cualquier otro tipo de instrucci�n C en medio del c�digo, ya 
+que el compilador de C lo aceptar�a (�no as� el int�rprete IQ!). Es
+importante tener claro que como consecuencia de tales adiciones el 
+programa dejar�a de estar escrito en c�digo Q.  A�n as�, estas 
+instrucciones en C pueden tener transitoriamente utilidad durante la 
+depuraci�n de un programa en Q o de un generador de c�digo Q, pero
+habr�n de eliminarse o comentarse para que al final el fuente est� en
+c�digo Q.  En contrapartida, como se indica m�s adelante, es posible
+ampliar Qlib.
+
+
+2.2. UN EJEMPLO SIMPLE
+
+Veamos un ejemplo simple ilustrativo.  Si queremos almacenar (y
+visualizar) los primeros 10 numeros factoriales, del 0! al 9!:
+
+----------------------------------------------------------------------
+#include "Q.h"             // macros y funciones predefinidas
+BEGIN
+L 0:   R0 = 0;             // indice bucle 
+       R1 = 1;             // inicializo factorial 
+L 1:   R2 = 4 * R0;        // direcci�n relativa dentro del vector
+       I(0x11fd8+R2) = R1; // almacena factorial como entero 
+   // la siguiente l�nea hace que deje de ser c�digo Q 
+   printf("%d!=%d\n", R0, I(0x11fd8+4*R0)); // C a pelo, puede llevar etiqueta 
+       R0 = R0 + 1;        // siguiente i; "cae" despues de CODE(0) 
+STAT(0)
+       FIL(0x11fd8,40,0);  // 0x11fd8..0x11fff: 10 int de 4 octetos, a 0 
+CODE(0)
+       R1 = R1 * R0;       // siguiente i! 
+       IF (R0 < 10) GT(1); // siguiente iteracion 
+       R0=0;               // c�digo de salida
+       GT(-2);             // termina como Dios manda 
+END                       
+----------------------------------------------------------------------
+
+En este ejemplo (que no usa la pila), en el momento de la carga se
+inicializa autom�ticamente la zona est�tica con 40 octetos a 0, y a
+continuaci�n comienza la ejecuci�n a partir de la etiqueta 0.  Se
+termina apropiadamente con un GT(-2).  Para que fuera c�digo Q habr�a
+que eliminar la instrucci�n del printf.
+
+Si en el texto de este ejemplo sustituimos "Q.h" por "Qlib.h" y
+eliminamos la l�nea del "printf", y a continuaci�n ejecutamos CPP, el
+resultado del preprocesado entrar�a exactamente en la definici�n de
+c�digo Q de la secci�n 1.
+
+El fichero ejr.c contiene una versi�n algo m�s simple de este ejemplo,
+(en la que los datos se almacenan en la pila) y en fibo?.q.c se
+presenta un ejemplo m�s completo, con distintos niveles de legibilidad
+usando macros; por lo dicho, las macros "est�ndar" pueden colocarse en
+un fichero incorporado luego con #include.
+
+
+2.3. INSTALACI�N DEL INT�RPRETE
+
+En principio el sistema esta comprobado para GCC de Linux para IA-32
+(con alg�n otro compilador pudiera haber alg�n problema, si no es
+est�ndar, sobre todo en relaci�n con el tratamiento de las macros o
+con los tama�os de los tipos).
+
+Basta compilar, teniendo IQ.o, Q.h, Qlib.h y Qlib.c en el directorio
+de trabajo:
+
+  gcc IQ.o Qlib.c -o IQ
+
+
+2.4. EJECUCI�N Y DEPURACI�N
+
+Para ejecutar un programa Q, simplemente se le pasa como argumento al 
+int�rprete (se requiere Qlib.h en el directorio de trabajo):
+
+  ./IQ ejemplos/ejr.q.c
+
+Dicho int�rprete puede adem�s ser utilizado como depurador (inspirado
+en GDB), que permite visualizar memoria y registros.  Para ello, �sese
+la opci�n -g.  Una vez en ejecuci�n, el comando h muestra una peque�a
+ayuda sobre los distintos comandos utilizables.
+
+Otra posibilidad de depuraci�n es utilizar el Visualizador Did�ctico
+de Ejecuci�n.  Basta situarse en el directorio "visualizador" y
+ejecutar:
+
+  ./vde
+
+(se requiere que IQ est� en el PATH y que Qlib.h est� en el mismo
+directorio que el fichero Q que se abra).
+
+Siempre ha de ser posible tambi�n compilar directamente un programa en 
+Q y ejecutarlo.  Para ello, p.e.
+
+  gcc -I. ./Qlib.c ejemplos/ejr.q.c ; ./a.out
+
+donde "." es la carpeta conteniendo Q.h, Qlib.h y Qlib.c.  Esta �ltima
+opci�n es normalmente la menos recomendable cuando estamos depurando.
+
+
+2.4.1 MEJOR INTERPRETAR QUE COMPILAR
+
+En res�men: si compilamos estaremos mal y poco informados de los
+errores, cosa que no ocurrir� si ejecutamos con IQ y, adem�s, con -g
+podremos analizar el estado en que se produzcan los errores.
+
+Si compilamos nuestro programa Q, en caso de error sint�ctico existen
+dos posibilidades: que el c�digo no sea C, y el compilador nos dar�
+entonces un error (posiblemente poco inteligible, debido a las macros
+de Q.h), o que sea C "por casualidad", y el compilador aceptar�
+entonces la entrada y podremos ejecutar nuestro programa, pero no por
+ello el c�digo ser� menos incorrecto desde el punto de vista de la
+definici�n de Q.  Es asimismo posible que, a�n siendo nuestro programa
+Q sint�cticamente correcto, se produzcan errores en ejecuci�n --como
+p.e. intentar acceder a una direcci�n de memoria err�nea--, en cuyo
+caso recibiremos un mensaje y a continuaci�n se abortar� la ejecuci�n.
+
+Si en lugar de compilar lo ejecutamos con IQ, se nos informar� tanto
+de los posibles errores sint�cticos (y no podr�a llegar a ejecutarse)
+como de los de ejecuci�n (y entonces abortar�a), y siempre con
+mensajes apropiados de acuerdo con la definici�n del lenguaje Q.  Se
+nos indicar� adem�s en qu� l�nea y posici�n se ha producido el error.
+
+Y si adem�s utilizamos la opcion -g de IQ, tendremos la posibilidad de
+analizar el contenido de memoria y registros en el momento de
+producirse un error de ejecuci�n, ya que no abortar�a, sino que
+recuperar�amos el control de instrucciones interactivas de IQ.
+Incluso cabr�a la posibilidad de probar a reanudar la ejecuci�n del
+programa tras modificar su estado ejecutando manualmente algunas
+instrucciones Q.
+
+En principio, VDE a�ade a lo anterior la posibilidad de la
+visualizaci�n gr�fica.
+
+
+2.5. BIBLIOTECA QLIB
+
+Qlib implementa las rutinas de biblioteca invocables desde el c�digo
+Q, tales como manejo del heap y entrada/salida b�sica.  Consta de
+dos ficheros: Qlib.h y Qlib.c.
+
+En Qlib.h s�lo se puede definir macros, las cuales ser�n utilizables 
+tanto en el c�digo Q (siempre que se use CPP) como en la propia Qlib.  
+En particular, es posible definir macros para las etiquetas de 
+las rutinas de Qlib.c invocables desde los programas en Q.  Tales 
+rutinas han de encontrarse enmarcadas entre BEGINLIB y ENDLIB.  Los 
+valores de las etiquetas declaradas en Qlib.c han de encontrarse 
+entre -10 y LLL, ambos inclusive (por defecto LLL=-9999; ver Qlib.h).
+
+No es posible usar STAT ni por tanto declaraciones de <datos 
+est�ticos> en las rutinas de Qlib, sino �nicamente c�digo, si bien 
+este c�digo puede ser una secuencia combinada de instrucciones Q y 
+cualquier tipo de instrucci�n C (incluyendo instrucciones compuestas, 
+con variables locales, acceso a la m�quina Q a trav�s de las macros 
+de Q.h, etc.).  De hecho, la ventaja de Qlib es poder escribir en C 
+c�modamente rutinas que requieren posibilidades para las que Q no es 
+apropiado; t�picamente, estas rutinas ser�n meros "envoltorios" o 
+"pasarelas" a llamadas al sistema o rutinas de LibC.
+
+Adem�s, antes de BEGINLIB podemos escribir definiciones de variables
+est�ticas y funciones C auxiliares, para ser utilizadas desde las
+rutinas de biblioteca.  T�ngase en cuenta que ni la zona est�tica de C
+ni la pila de C colisionan con las de Q, ya que �stas se obtienen con
+realloc.
+
+En principio, NO es admisible que se modifique Q.h, pero S� Qlib.h y
+Qlib.c.  En este caso, habr� que reinstalar el interprete como se 
+indica en la secci�n 2.3, para que incorpore tales modificaciones.
+
+
+3. MEJORAS FUTURAS Y NOTIFICACI�N DE ORRORES
+
+Convertir -3 (ABO) quiz� en -10 (TRP), de forma que el programa (e IQ
+en modo depuraci�n) puedan controlar la respuesta, o visualizar el
+contexto que produjo el "trap".
+
+Ser�a interesante idear una extensi�n que permita linkaje de m�dulos
+en Q.
+
+Comentarios al autor, Jos� Fortes (Universidad de Las Palmas de Gran
+Canaria), en la direcci�n jfortes@dis.ulpgc.es
