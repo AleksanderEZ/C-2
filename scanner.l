@@ -8,7 +8,7 @@
 integer [0-9]+
 floating {integer}\.[0-9]*
 comment (\/\/.*\n)|(\/\*(.|\n)*\*\/)
-nombre [a-zA-z_]([a-zA-Z]|[0-9])*
+nombre [a-zA-Z_]([a-zA-Z]|[0-9])*
 character '([^\r\n'])'
 string \"[^\"\n]*\"
 
