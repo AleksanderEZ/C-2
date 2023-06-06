@@ -1,4 +1,4 @@
-TESTFILE = src/Fibonacci.c2
+TESTFILE = src/Sort.c2
 OBJECTFILE = obj.q.c
 IQ = IQ.o
 

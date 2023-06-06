@@ -139,6 +139,7 @@ void checkVarExists(char* name) {
 %type <integer> value
 %type <integer> function_call
 %type <integer> array_index
+%type <integer> value_list
 
 %left EQUALS NOT_EQUALS GREATER GREATER_EQUALS LESSER LESSER_EQUALS NEGATOR AND OR
 %left ADDITION SUBTRACTION
@@ -176,7 +177,8 @@ simple_instruction
 simple_declaration
   : type IDENTIFIER { declaration($1, $2, yylineno); } 
   | type IDENTIFIER ASSIGNMENT expression { declaration($1, $2, yylineno); qStoreVar($4, $2); qFreeRegister($4); }
-  | array_declaration
+  | type IDENTIFIER array_index { declaration($1, $2, yylineno); qReserveMemory($1, $2, $3); }
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT OPEN_CURLY { qNewValueList(); } value_list CLOSE_CURLY { declaration($1, $2, yylineno); qReserveArray($1, $2, $8); qFreeRegister($8); }
   ;
 
 complex_instruction
@@ -291,27 +293,14 @@ return
   | RETURN { qReturn(400); }
   ;
 
-// array
-
-array
-  : OPEN_CURLY value_list CLOSE_CURLY {/* $$ = $2 */}
-  ;
-
 value_list
-  : expression
-  | value_list COMMA expression
-  ;
-
-array_declaration
-  : type IDENTIFIER array_index {/* declaration($1, $2, yylineno); void* address = qReserveMemory($3); setRegValue($2, variableSwitch, address); */}
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT array {/* declaration($1, $2, yylineno); void* address = qReserveArray($6, arraySize, arrayType); setRegValue($2, variableSwitch, address); arraySize = 0; arrayType = voidType; */}
+  : expression  { $$ = qExpandValueList($1); qFreeRegister($1); }
+  | value_list COMMA expression { $$ = qExpandValueList($3); qFreeRegister($1); }
   ;
 
 array_index
   : OPEN_SQUARE expression CLOSE_SQUARE { $$ = $2; }
   ;
-
-//
 
 function_declaration
   : function_header { dummyReg(); } instruction_block { if(strncmp($1, "main", 4) != 0) qFinishFunction(); }

@@ -65,5 +65,9 @@ int qFunctionDeclaration(char* functionName, int count, char** types, char** nam
 void qFinishFunction();
 int qSizeOf(char* typeName);
 char qTypeMnemonic(char* typeName);
+void qReserveMemory(char* typeName, char* variableName, int slots);
+void qReserveArray(char* typeName, char* variableName, int valuesAddress);
+int qExpandValueList(int reg);
+void qNewValueList();
 
 #endif /* CODE_GENERATION_H */

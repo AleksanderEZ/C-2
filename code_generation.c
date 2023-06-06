@@ -797,3 +797,19 @@ char qTypeMnemonic(char* typeName) {
     }
     yyerror("Unrecognized type");
 }
+
+void qReserveMemory(char* typeName, char* variableName, int slots) {
+
+}
+
+void qReserveArray(char* typeName, char* variableName, int valuesAddress) {
+
+}
+
+int qExpandValueList(int reg) {
+
+}
+
+void qNewValueList() {
+
+}
