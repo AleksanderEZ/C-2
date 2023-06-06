@@ -13,6 +13,10 @@ void yyerror(char* message);
 
 char* currentFunction = NULL;
 
+int currentValueList = notAssigned;
+char* currentValueListType = NULL;
+enum RegType currentValueListSwitch;
+
 int topElse = -1;
 int topContinue = -1;
 int topBreak = -1;
@@ -692,7 +696,15 @@ void qLoadCharValue(int reg, char value) {
 }
 
 void qLoadStringValue(int reg, char* value) {
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%p;", reg, value);
+    qStat();
+
+    qPushStatic(strlen(value)+1); //strlen does not count '/0'
+    snprintf(line, sizeof(char) * lineSizeLimit, "STR(0x%x,%s); ", staticTop, value);
+    qLine();
+
+    qCode();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x);", reg, staticTop);
     qLine();
 }
 
@@ -783,33 +795,123 @@ int qSizeOf(char* typeName) {
 }
 
 char qTypeMnemonic(char* typeName) {
-    if (strcmp(typeName, "int")) {
-        return 73 + 3;
-    } else if (strcmp(typeName, "float"))
+    if (strcmp(typeName, "int") == 0) {
+        return 'I';
+    } else if (strcmp(typeName, "float") == 0)
     {
-        return 70 + 3;
-    } else if (strcmp(typeName, "char"))
+        return 'F';
+    } else if (strcmp(typeName, "char") == 0)
     {
-        return 85 + 3;
-    } else if (strcmp(typeName, "char*"))
+        return 'U';
+    } else if (strcmp(typeName, "char*") == 0)
     {
-        return 80 + 3;
+        return 'P';
     }
     yyerror("Unrecognized type");
 }
 
-void qReserveMemory(char* typeName, char* variableName, int slots) {
-
+void qReserveMemory(char* typeName, char* variableName, int slots, enum RegType variableSwitch) {
+    int bytes = qSizeOf(typeName) * slots;
+    if (variableSwitch == globalVariable) {
+        struct Reg* result = searchRegType(variableName, globalVariable);
+        qPushStatic(bytes);
+        result->value = staticTop;
+    } else if (variableSwitch == localVariable) {
+        struct Reg* result = searchRegType(variableName, localVariable);
+        qPushStack(bytes);
+        result->value = stackAdvance;
+    }
 }
 
-void qReserveArray(char* typeName, char* variableName, int valuesAddress) {
-
+void qReserveArray(char* variableName) {
+    struct Reg* result = searchRegType(variableName, currentValueListSwitch);
+    if(result == NULL) searchRegType(variableName, parameter);
+    result->value = currentValueList;
+    currentValueListType = NULL;
+    currentValueList = notAssigned;
 }
 
-int qExpandValueList(int reg) {
-
+void qExpandValueList(int reg) {
+    if (currentValueListSwitch == globalVariable) {
+        qExpandValueListStatic(reg);
+    } else if (currentValueListSwitch == localVariable) {
+        qExpandValueListStack(reg);
+    }
 }
 
-void qNewValueList() {
+void qExpandValueListStatic(int reg) {
+    qPushStatic(qSizeOf(currentValueListType));
+    snprintf(line, sizeof(char) * lineSizeLimit, "%c(0x%x)=R%d;", qTypeMnemonic(currentValueListType), currentValueList, reg);
+    qLine();
+    currentValueList = currentValueList + qSizeOf(currentValueListType);
+}
 
+void qExpandValueListStack(int reg) {
+    qPushStack(qSizeOf(currentValueListType));
+    snprintf(line, sizeof(char) * lineSizeLimit, "%c(R7)=R%d;", qTypeMnemonic(currentValueListType), reg);
+    qLine();
+    currentValueList = currentValueList + qSizeOf(currentValueListType);
+}
+
+void qNewValueList(char* type, enum RegType variableSwitch) {
+    currentValueListSwitch = variableSwitch;
+    if(variableSwitch == globalVariable) {
+        qNewValueListStatic(type);
+    } else if (variableSwitch == localVariable) {
+        qNewValueListStack(type);
+    }
+}
+
+void qNewValueListStatic(char* type) {
+    if(currentValueList != notAssigned) yyerror("Creating value list while another is unfinished");
+    if(currentValueListType != NULL) yyerror("Creating value list while another is unfinished");
+    int typeSize = qSizeOf(type);
+    currentValueListType = type;
+    qPushStatic(typeSize);
+    currentValueList = staticTop;
+}
+
+void qNewValueListStack(char* type) {
+    int typeSize = qSizeOf(type);
+    currentValueListType = type;
+    qPushStack(typeSize);
+    if(currentValueList != notAssigned) yyerror("Creating value list while another is unfinished");
+    currentValueList = stackAdvance;
+}
+
+void qArrayAccess(int reg, char* array, int regWithIndex) {
+    struct Reg* result = search(array);
+    if (result == NULL) {
+        yyerror("Variable not declared");
+    }
+    if (result->type == localVariable || result->type == parameter) {
+        qLocalArrayAccess(reg, array, regWithIndex);
+    }
+    if (result->type == globalVariable) {
+        qGlobalArrayAccess(reg, array, regWithIndex);
+    }
+}
+
+void qLocalArrayAccess(int reg, char* array, int regWithIndex) {
+    struct Reg* arrayEntry = searchRegType(array, localVariable);
+    if(arrayEntry == NULL) arrayEntry = searchRegType(array, parameter);
+    char* arrayType = arrayEntry->typeReg->regName;
+    int arrayLength = arrayEntry->arraySize;
+    int value = arrayEntry->value;
+
+    if(value > 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6-%d;", reg, value);
+    if(value < 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6+%d;", reg, value);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", reg, reg, regWithIndex);
+    qLine();
+
+//    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(R%d);", reg, reg);
+//    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R%d);", reg, qTypeMnemonic(arrayType), reg);
+    qLine();
+}
+
+void qGlobalArrayAccess(int reg, char* array, int regWithIndex) {
 }

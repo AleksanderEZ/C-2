@@ -177,8 +177,8 @@ simple_instruction
 simple_declaration
   : type IDENTIFIER { declaration($1, $2, yylineno); } 
   | type IDENTIFIER ASSIGNMENT expression { declaration($1, $2, yylineno); qStoreVar($4, $2); qFreeRegister($4); }
-  | type IDENTIFIER array_index { declaration($1, $2, yylineno); qReserveMemory($1, $2, $3); }
-  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT OPEN_CURLY { qNewValueList(); } value_list CLOSE_CURLY { declaration($1, $2, yylineno); qReserveArray($1, $2, $8); qFreeRegister($8); }
+  | type IDENTIFIER array_index { declaration($1, $2, yylineno); qReserveMemory($1, $2, $3, variableSwitch); }
+  | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT OPEN_CURLY { qNewValueList($1, variableSwitch); } value_list CLOSE_CURLY { declaration($1, $2, yylineno); qReserveArray($2); }
   ;
 
 complex_instruction
@@ -216,7 +216,7 @@ third_part_for
   ;
 
 while
-  : while_header { dummyReg(); } instruction { qFinishWhile(); closeBlock(); }
+  : while_header { dummyReg(); } instruction { qFinishWhile(); }
   ;
 
 while_header
@@ -268,10 +268,10 @@ expression
   | expression ASTERISK expression { $$ = $1; qMultiply($1, $3); qFreeRegister($3);}
   | expression MODULUS expression { $$ = $1; qModulus($1, $3); qFreeRegister($3);}
   | function_call
-  | IDENTIFIER array_index { checkVarExists($1); }
-  | AMPERSAND IDENTIFIER { checkVarExists($2); }
-  | ASTERISK IDENTIFIER { checkVarExists($2); }
-  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
+  | IDENTIFIER array_index { checkVarExists($1); $$ = qAssignRegister(); qArrayAccess($$, $1, $2); qFreeRegister($2); }
+//  | ASTERISK IDENTIFIER { checkVarExists($2); }
+//  | AMPERSAND IDENTIFIER { checkVarExists($2); }
+//  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
   ;
 
 function_call
@@ -294,8 +294,8 @@ return
   ;
 
 value_list
-  : expression  { $$ = qExpandValueList($1); qFreeRegister($1); }
-  | value_list COMMA expression { $$ = qExpandValueList($3); qFreeRegister($1); }
+  : expression  { qExpandValueList($1); qFreeRegister($1); }
+  | value_list COMMA expression { qExpandValueList($3); qFreeRegister($1); }
   ;
 
 array_index

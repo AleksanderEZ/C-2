@@ -65,9 +65,17 @@ int qFunctionDeclaration(char* functionName, int count, char** types, char** nam
 void qFinishFunction();
 int qSizeOf(char* typeName);
 char qTypeMnemonic(char* typeName);
-void qReserveMemory(char* typeName, char* variableName, int slots);
-void qReserveArray(char* typeName, char* variableName, int valuesAddress);
-int qExpandValueList(int reg);
-void qNewValueList();
+void qReserveMemory(char* typeName, char* variableName, int slots, enum RegType variableSwitch);
+void qReserveArray(char* variableName);
+void qExpandValueList(int reg);
+void qNewValueList(char* type, enum RegType variableSwitch);
+void qArrayAccess(int reg, char* array, int regWithIndex);
+void qLocalArrayAccess(int reg, char* array, int regWithIndex);
+void qGlobalArrayAccess(int reg, char* array, int regWithIndex);
+void qNewValueListStack();
+void qNewValueListStatic();
+void qExpandValueListStatic(int reg);
+void qExpandValueListStack(int reg);
+
 
 #endif /* CODE_GENERATION_H */

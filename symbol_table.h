@@ -10,6 +10,7 @@ struct Reg {
     int value;
     int nParameters;
     int lineOfDeclaration;
+    int arraySize;
     struct Reg* next;
     struct Reg* previous;
 };
