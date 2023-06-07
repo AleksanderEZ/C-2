@@ -1,0 +1,9 @@
+int main() {
+    int numbers[5];
+    int n = 0;
+    while(n < 5) {
+        numbers[n] = 5 - n;
+        printf("%d,", numbers[n]);
+        n = n + 1;
+    }
+}

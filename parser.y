@@ -177,7 +177,7 @@ simple_instruction
 simple_declaration
   : type IDENTIFIER { declaration($1, $2, yylineno); } 
   | type IDENTIFIER ASSIGNMENT expression { declaration($1, $2, yylineno); qStoreVar($4, $2); qFreeRegister($4); }
-  | type IDENTIFIER array_index { declaration($1, $2, yylineno); qReserveMemory($1, $2, $3, variableSwitch); }
+  | type IDENTIFIER OPEN_SQUARE INT_VALUE CLOSE_SQUARE { declaration($1, $2, yylineno); qReserveMemory($1, $2, $4, variableSwitch); }
   | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT OPEN_CURLY { qNewValueList($1, variableSwitch); } value_list CLOSE_CURLY { declaration($1, $2, yylineno); qReserveArray($2); }
   ;
 
@@ -255,7 +255,7 @@ condition
 
 assignment
   : IDENTIFIER ASSIGNMENT expression { checkVarExists($1); qStoreVar($3, $1); qFreeRegister($3); }
-  | IDENTIFIER array_index ASSIGNMENT expression {/* checkVarExists($1); qStoreArrayIndex($1, $2, $4) */}
+  | IDENTIFIER array_index ASSIGNMENT expression { checkVarExists($1); qStoreArrayIndex($1, $2, $4); qFreeRegister($4); }
   ;
 
 expression

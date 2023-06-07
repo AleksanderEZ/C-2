@@ -32,7 +32,7 @@ int label = 1;
 int atLabel = 0;
 int statCodeCounter = 0;
 int staticTop = 0x12000;
-int stackBase = 0x9000;
+int stackBase = 0xf000;
 int stackAdvance;
 char* line;
 int* registers;
@@ -903,6 +903,9 @@ void qLocalArrayAccess(int reg, char* array, int regWithIndex) {
     if(value < 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6+%d;", reg, value);
     qLine();
 
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
+    qLine();
+
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", reg, reg, regWithIndex);
     qLine();
 
@@ -914,4 +917,63 @@ void qLocalArrayAccess(int reg, char* array, int regWithIndex) {
 }
 
 void qGlobalArrayAccess(int reg, char* array, int regWithIndex) {
+    struct Reg* arrayFound = searchRegType(array, globalVariable);
+    int value = arrayFound->value;
+    char* arrayType = arrayFound->typeReg->regName;
+    int freeReg = qAssignRegister();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=0x%x;", freeReg, value);
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", freeReg, freeReg, regWithIndex);
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R%d);", reg, qTypeMnemonic(arrayType), freeReg);
+    qLine();
+    qFreeRegister(freeReg);
+}
+
+void qStoreArrayIndex(char* identifier, int regWithIndex, int regWithValue) {
+    struct Reg* array = search(identifier);
+    if (array == NULL) yyerror("Array not declared");
+    if (array->type == globalVariable) {
+        qStoreGlobalArrayIndex(identifier, regWithIndex,regWithValue);
+    } else if (array->type == localVariable || array->type == parameter){
+        qStoreLocalArrayIndex(identifier, regWithIndex, regWithValue);
+    }
+}
+
+void qStoreLocalArrayIndex(char* identifier, int regWithIndex, int regWithValue) {
+    struct Reg* array = searchRegType(identifier, localVariable);
+    if (array == NULL) array = searchRegType(identifier, parameter);
+    int value = array->value;
+    char* arrayType = array->typeReg->regName;
+    int freeReg = qAssignRegister();
+    if (value > 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6-%d;", freeReg, value);
+    if (value < 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6+%d;", freeReg, value);
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", freeReg, freeReg, regWithIndex);
+    qLine();
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "%c(R%d)=R%d;", qTypeMnemonic(arrayType), freeReg, regWithValue);
+    qLine();
+
+    qFreeRegister(freeReg);
+}
+
+void qStoreGlobalArrayIndex(char* identifier, int regWithIndex, int regWithValue) {
+    struct Reg* array = searchRegType(identifier, globalVariable);
+    int value = array->value;
+    char* arrayType = array->typeReg->regName;
+    int freeReg = qAssignRegister();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=0x%x;", freeReg, value);
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", freeReg, freeReg, regWithIndex);
+    qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "%c(R%d)=R%d;", qTypeMnemonic(arrayType), freeReg, regWithValue);
+    qLine();
+    qFreeRegister(freeReg);
 }

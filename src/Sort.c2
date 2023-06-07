@@ -4,7 +4,8 @@ char* getMessage() {
 
 int main() {
 //    printf("%s\n", getMessage());     // Can't print strings right now
-    float numbers[5];
+//    float numbers[5];                 // Floats not working
+    int numbers[5];
     int n = 0;
     while(n < 5) {
         numbers[n] = 5 - n;
@@ -14,7 +15,8 @@ int main() {
 
     n = 0;
     int m;
-    float minIndex;
+//    float minIndex;                   // Floats not working
+    int minIndex;
     while(n < 4) {
         minIndex = n;
         m = n + 1;
@@ -23,7 +25,8 @@ int main() {
                 minIndex = m;
             }
             if (minIndex != n) {
-                float temp = numbers[minIndex];
+//                float temp = numbers[minIndex];
+                int temp = numbers[minIndex];
                 numbers[minIndex] = numbers[n];
                 numbers[n] = temp;
             }
