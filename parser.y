@@ -179,6 +179,7 @@ simple_declaration
   | type IDENTIFIER ASSIGNMENT expression { declaration($1, $2, yylineno); qStoreVar($4, $2); qFreeRegister($4); }
   | type IDENTIFIER OPEN_SQUARE INT_VALUE CLOSE_SQUARE { declaration($1, $2, yylineno); qReserveMemory($1, $2, $4, variableSwitch); }
   | type IDENTIFIER OPEN_SQUARE CLOSE_SQUARE ASSIGNMENT OPEN_CURLY { qNewValueList($1, variableSwitch); } value_list CLOSE_CURLY { declaration($1, $2, yylineno); qReserveArray($2); }
+//  | type IDENTIFIER OPEN_SQUARE INT_VALUE CLOSE_SQUARE ASSIGNMENT OPEN_CURLY { qNewValueList($1, variableSwitch); } value_list CLOSE_CURLY { declaration($1, $2, yylineno); qReserveArray($2); }
   ;
 
 complex_instruction
@@ -187,7 +188,7 @@ complex_instruction
   ;
 
 instruction_block
-  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY {closeBlock(); variableSwitch = globalVariable; }
+  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY { closeBlock(); }
   ;
 
 control
@@ -207,7 +208,7 @@ for_header
 first_part_for
   : 
   | IDENTIFIER ASSIGNMENT expression
-  | type IDENTIFIER ASSIGNMENT expression { variableSwitch = localVariable; declaration($1, $2, yylineno); variableSwitch = globalVariable; }
+  | type IDENTIFIER ASSIGNMENT expression { variableSwitch = localVariable; declaration($1, $2, yylineno); }
   ;
 
 third_part_for
@@ -303,7 +304,7 @@ array_index
   ;
 
 function_declaration
-  : function_header { dummyReg(); } instruction_block { if(strncmp($1, "main", 4) != 0) qFinishFunction(); }
+  : function_header { dummyReg(); } instruction_block { if(strncmp($1, "main", 4) != 0) qFinishFunction(); variableSwitch = globalVariable; }
   ;
 
 function_header

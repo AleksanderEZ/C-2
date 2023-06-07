@@ -1,9 +1,11 @@
-int whichIsGreater();
+//int whichIsGreater();             //Function headers alone not working
 
 int main() {
     int limit = 10;
-    int numbers1[10] = {0,1,2,3,4,5,6,7,8,9};
-    int numbers2[10] = {-1,1,6,5,3,7,2,6,45,6};
+//    int numbers1[10] = {0,1,2,3,4,5,6,7,8,9};
+//    int numbers2[10] = {-1,1,6,5,3,7,2,6,45,6};
+    int numbers1[] = {0,1,2,3,4,5,6,7,8,9};
+    int numbers2[] = {-1,1,6,5,3,7,2,6,45,6};
 
     int n = 0;
     int number;

@@ -5,7 +5,7 @@
 %}
 %option yylineno
 
-integer [0-9]+
+integer -?[0-9]+
 floating {integer}\.[0-9]*
 comment (\/\/.*\n)|(\/\*(.|\n)*\*\/)
 nombre [a-zA-Z_]([a-zA-Z]|[0-9])*
