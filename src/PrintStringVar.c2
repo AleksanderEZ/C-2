@@ -1,0 +1,4 @@
+int main() {
+    char* message = "Hello world %d";
+    printf(message, 5);
+}

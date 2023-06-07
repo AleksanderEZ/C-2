@@ -1,5 +1,5 @@
-int prev1 = 1;
-int prev2 = 0;
+int prev1;
+int prev2;
  
 // recursive function to print the fibonacci series
 void fib(int n)
@@ -43,7 +43,7 @@ void printFib(int n)
 // driver code
 int main()
 {
-    prev1 = 1; //PROVISIONAL. LAS GLOBALES NO SE ESTAN ASIGNANDO ARRIBA :(
+    prev1 = 1;
     int n = 9;
     printFib(n);
     return 0;

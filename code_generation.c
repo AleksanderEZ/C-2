@@ -16,6 +16,7 @@ char* currentFunction = NULL;
 int currentValueList = notAssigned;
 char* currentValueListType = NULL;
 enum RegType currentValueListSwitch;
+int currentValueListSize = 0;
 
 int topElse = -1;
 int topContinue = -1;
@@ -294,6 +295,9 @@ void qFinishFunction() {
         qRecoverBase();
         qFunctionReturn();
     }
+}
+
+void qFunctionEnded() {
     currentFunction = NULL;
 }
 
@@ -453,6 +457,8 @@ void qReturn(int reg) {
 
     snprintf(line, sizeof(char) * lineSizeLimit, "%c(R6+%d)=R%d;", qTypeMnemonic(functionType), paramSize, reg);
     qLine();
+
+    qFinishFunction();
 
     qFreeRegister(reg);
 }
@@ -704,7 +710,7 @@ void qLoadStringValue(int reg, char* value) {
 
     qCode();
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(0x%x);", reg, staticTop);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=0x%x;", reg, staticTop);
     qLine();
 }
 
@@ -816,10 +822,12 @@ void qReserveMemory(char* typeName, char* variableName, int slots, enum RegType 
         struct Reg* result = searchRegType(variableName, globalVariable);
         qPushStatic(bytes);
         result->value = staticTop;
+        result->arraySize = slots;
     } else if (variableSwitch == localVariable) {
         struct Reg* result = searchRegType(variableName, localVariable);
         qPushStack(bytes);
         result->value = stackAdvance;
+        result->arraySize = slots;
     }
 }
 
@@ -827,8 +835,10 @@ void qReserveArray(char* variableName) {
     struct Reg* result = searchRegType(variableName, currentValueListSwitch);
     if(result == NULL) searchRegType(variableName, parameter);
     result->value = currentValueList;
+    result->arraySize = currentValueListSize-1;
     currentValueListType = NULL;
     currentValueList = notAssigned;
+    currentValueListSize = 0;
 }
 
 void qExpandValueList(int reg) {
@@ -844,6 +854,7 @@ void qExpandValueListStatic(int reg) {
     snprintf(line, sizeof(char) * lineSizeLimit, "%c(0x%x)=R%d;", qTypeMnemonic(currentValueListType), currentValueList, reg);
     qLine();
     currentValueList = currentValueList + qSizeOf(currentValueListType);
+    currentValueListSize = currentValueListSize + 1;
 }
 
 void qExpandValueListStack(int reg) {
@@ -851,6 +862,7 @@ void qExpandValueListStack(int reg) {
     snprintf(line, sizeof(char) * lineSizeLimit, "%c(R7)=R%d;", qTypeMnemonic(currentValueListType), reg);
     qLine();
     currentValueList = currentValueList + qSizeOf(currentValueListType);
+    currentValueListSize = currentValueListSize + 1;
 }
 
 void qNewValueList(char* type, enum RegType variableSwitch) {
@@ -865,6 +877,7 @@ void qNewValueList(char* type, enum RegType variableSwitch) {
 void qNewValueListStatic(char* type) {
     if(currentValueList != notAssigned) yyerror("Creating value list while another is unfinished");
     if(currentValueListType != NULL) yyerror("Creating value list while another is unfinished");
+    if(currentValueListSize != 0) yyerror("Creating value list while another is unfinished");
     int typeSize = qSizeOf(type);
     currentValueListType = type;
     qPushStatic(typeSize);
@@ -872,10 +885,12 @@ void qNewValueListStatic(char* type) {
 }
 
 void qNewValueListStack(char* type) {
+    if(currentValueList != notAssigned) yyerror("Creating value list while another is unfinished");
+    if(currentValueListSize != 0) yyerror("Creating value list while another is unfinished");
+    if(currentValueListType != NULL) yyerror("Creating value list while another is unfinished");
     int typeSize = qSizeOf(type);
     currentValueListType = type;
     qPushStack(typeSize);
-    if(currentValueList != notAssigned) yyerror("Creating value list while another is unfinished");
     currentValueList = stackAdvance;
 }
 
@@ -897,16 +912,18 @@ void qLocalArrayAccess(int reg, char* array, int regWithIndex) {
     if(arrayEntry == NULL) arrayEntry = searchRegType(array, parameter);
     char* arrayType = arrayEntry->typeReg->regName;
     int arrayLength = arrayEntry->arraySize;
+    printf("hola%d\n", arrayLength);
     int value = arrayEntry->value;
 
     if(value > 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6-%d;", reg, value);
     if(value < 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6+%d;", reg, value);
     qLine();
-
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+%d;", reg, reg, arrayLength * qSizeOf(arrayType));
+    qLine();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
     qLine();
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", reg, reg, regWithIndex);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d-R%d;", reg, reg, regWithIndex);
     qLine();
 
 //    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=P(R%d);", reg, reg);
@@ -919,13 +936,16 @@ void qLocalArrayAccess(int reg, char* array, int regWithIndex) {
 void qGlobalArrayAccess(int reg, char* array, int regWithIndex) {
     struct Reg* arrayFound = searchRegType(array, globalVariable);
     int value = arrayFound->value;
+    int arrayLength = arrayFound->arraySize;
     char* arrayType = arrayFound->typeReg->regName;
     int freeReg = qAssignRegister();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=0x%x;", freeReg, value);
     qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+%d;", freeReg, freeReg, arrayLength * qSizeOf(arrayType));
+    qLine();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
     qLine();
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", freeReg, freeReg, regWithIndex);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d-R%d;", freeReg, freeReg, regWithIndex);
     qLine();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R%d);", reg, qTypeMnemonic(arrayType), freeReg);
     qLine();
@@ -946,14 +966,17 @@ void qStoreLocalArrayIndex(char* identifier, int regWithIndex, int regWithValue)
     struct Reg* array = searchRegType(identifier, localVariable);
     if (array == NULL) array = searchRegType(identifier, parameter);
     int value = array->value;
+    int arrayLength = array->arraySize;
     char* arrayType = array->typeReg->regName;
     int freeReg = qAssignRegister();
     if (value > 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6-%d;", freeReg, value);
     if (value < 0) snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R6+%d;", freeReg, value);
     qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+%d;", freeReg, freeReg, arrayLength * qSizeOf(arrayType));
+    qLine();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
     qLine();
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", freeReg, freeReg, regWithIndex);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d-R%d;", freeReg, freeReg, regWithIndex);
     qLine();
 
     snprintf(line, sizeof(char) * lineSizeLimit, "%c(R%d)=R%d;", qTypeMnemonic(arrayType), freeReg, regWithValue);
@@ -966,14 +989,25 @@ void qStoreGlobalArrayIndex(char* identifier, int regWithIndex, int regWithValue
     struct Reg* array = searchRegType(identifier, globalVariable);
     int value = array->value;
     char* arrayType = array->typeReg->regName;
+    int arrayLength = array->arraySize;
     int freeReg = qAssignRegister();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=0x%x;", freeReg, value);
     qLine();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+%d;", freeReg, freeReg, arrayLength * qSizeOf(arrayType));
+    qLine();
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", regWithIndex, regWithIndex, qSizeOf(arrayType));
     qLine();
-    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d+R%d;", freeReg, freeReg, regWithIndex);
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d-R%d;", freeReg, freeReg, regWithIndex);
     qLine();
     snprintf(line, sizeof(char) * lineSizeLimit, "%c(R%d)=R%d;", qTypeMnemonic(arrayType), freeReg, regWithValue);
     qLine();
     qFreeRegister(freeReg);
+}
+
+void qLoadDefaultValue(char* identifier) {
+    int reg = qAssignRegister();
+    snprintf(line, sizeof(char) * lineSizeLimit, "R%d=0;", reg);
+    qLine();
+    qStoreVar(reg, identifier);
+    qFreeRegister(reg);
 }

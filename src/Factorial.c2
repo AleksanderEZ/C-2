@@ -1,0 +1,17 @@
+int factorial(int n) {
+   //base case
+   if(n == 0) {
+      return 1;
+   } else {
+      int m = factorial(n-1);
+      //return n * factorial(n-1);
+      return n * m;
+   }
+}
+
+int main() {
+   int n = 10;
+	
+   printf("Factorial of %d:" , n);
+   printf(" %d\n" , factorial(n));
+}

@@ -1,8 +1,13 @@
 int main() {
-    int numbers[5];
+    int numbers[10];
     int n = 0;
-    while(n < 5) {
+    while(n < 10) {
         numbers[n] = 5 - n;
+        n = n + 1;
+    }
+
+    n = 0;
+    while(n < 10) {
         printf("%d,", numbers[n]);
         n = n + 1;
     }

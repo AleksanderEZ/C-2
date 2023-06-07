@@ -1,0 +1,24 @@
+int fibonacci(int n) {
+    if(n == 0){
+        return 0;
+    } else if(n == 1) {
+        return 1;
+    } else {
+        int a = fibonacci(n-1);
+        int b = fibonacci(n-2);
+//        return (fibonacci(n-1) + fibonacci(n-2));
+        return a + b;
+    }
+}
+
+int main() {
+    int i;
+    int n = 5;
+    printf("Fibonacci of %d: " , n);
+
+    i = 0;
+    while(i<n){
+        printf("%d ", fibonacci(i));
+        i = i + 1;
+    }
+}

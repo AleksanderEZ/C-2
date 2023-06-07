@@ -79,6 +79,7 @@ void qExpandValueListStack(int reg);
 void qStoreArrayIndex(char* identifier, int regWithIndex, int regWithValue);
 void qStoreLocalArrayIndex(char* identifier, int regWithIndex, int regWithValue);
 void qStoreGlobalArrayIndex(char* identifier, int regWithIndex, int regWithValue);
-
+void qLoadDefaultValue(char* identifier);
+void qFunctionEnded();
 
 #endif /* CODE_GENERATION_H */
