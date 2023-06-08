@@ -3,7 +3,10 @@ int sum(int add1, int add2) {
 }
 
 int run() {
-    return sum(1,2) + sum(3,2);
+    int a = sum(1,2);
+    int b = sum(3,2);
+//    return sum(1,2) + sum(3,2);
+    return a + b;
 }
 
 int main() {
