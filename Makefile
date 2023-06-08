@@ -1,4 +1,4 @@
-TESTFILE = src/Ifelse.c2
+TESTFILE = src/FibonacciRecursivo.c2
 OBJECTFILE = obj.q.c
 IQ = IQ.o
 

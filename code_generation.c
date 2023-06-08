@@ -24,6 +24,7 @@ int topBreak = -1;
 int topSkipElse = -1;
 int topAdvance = -1;
 int topParameter = -1;
+int topSavedRegisters = -1;
 
 int rClone;  //save R0, R1, R2 before using them in print
 
@@ -44,6 +45,7 @@ int continueStack[stackSize];
 int breakStack[stackSize];
 int advanceStack[stackSize];
 int parameterStack[stackSize];
+int savedRegistersStack[stackSize];
 
 void push(int label, enum StackOption stackOption) {
     int* stack;
@@ -73,6 +75,10 @@ void push(int label, enum StackOption stackOption) {
     case PARAMETER_STACK:
         stack = parameterStack;
         top = &topParameter;
+        break;
+    case SAVED_REGISTERS_STACK:
+        stack = savedRegistersStack;
+        top = &topSavedRegisters;
         break;
     default:
         break;
@@ -116,6 +122,10 @@ int pop(enum StackOption stackOption) {
         stack = parameterStack;
         top = &topParameter;
         break;
+    case SAVED_REGISTERS_STACK:
+        stack = savedRegistersStack;
+        top = &topSavedRegisters;
+        break;
     default:
         break;
     }
@@ -140,6 +150,12 @@ void qPushStack(int bytes) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d;", bytes);
     qLine();
     stackAdvance += bytes;
+}
+
+void qPopStack(int bytes) {
+    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", bytes);
+    qLine();
+    stackAdvance -= bytes;
 }
 
 void qFreeStack() {
@@ -305,6 +321,29 @@ void qFunctionArguments(int reg) {
     push(reg, PARAMETER_STACK);
 }
 
+void qSaveAliveRegisters() {
+    for (int i = 0; i < 6; i++)
+    {
+        if (registers[i] == 1)
+        {
+            qPushStack(qSizeOf("int"));
+            snprintf(line, sizeof(char) * lineSizeLimit, "%c(R7)=R%d;", qTypeMnemonic("int"), i);
+            qLine();
+            push(i, SAVED_REGISTERS_STACK);
+        }
+    }
+}
+
+void qRecoverAliveRegs() {
+    int poppedReg;
+    while(topSavedRegisters > -1) {
+        poppedReg = pop(SAVED_REGISTERS_STACK);
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=%c(R7);", poppedReg, qTypeMnemonic("int"));
+        qLine();
+        qPopStack(qSizeOf("int"));
+    }
+}
+
 int qCallFunction(char* functionName) {
     struct Reg* searchResult = searchRegType(functionName, function);
     int functionLabel = searchResult->value;
@@ -374,6 +413,8 @@ int qCallFunction(char* functionName) {
 
     snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", paramSize + returnSize);
     qLine();
+
+    qRecoverAliveRegs();
 
     if(returnSize > 0) {
         return reg;
@@ -822,15 +863,15 @@ void qLesserEquals(int reg1, int reg2) {
 }
 
 int qSizeOf(char* typeName) {
-    if (strcmp(typeName, "int")) {
+    if (strcmp(typeName, "int") == 0) {
         return 4;
-    } else if (strcmp(typeName, "float"))
+    } else if (strcmp(typeName, "float") == 0)
     {
         return 4;
-    } else if (strcmp(typeName, "char"))
+    } else if (strcmp(typeName, "char") == 0)
     {
         return 1;
-    } else if (strcmp(typeName, "char*"))
+    } else if (strcmp(typeName, "char*") == 0)
     {
         return 4;
     }

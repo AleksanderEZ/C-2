@@ -3,7 +3,7 @@
 
 #include "symbol_table.h"
 
-enum StackOption {CONTINUE_STACK, ELSE_STACK, BREAK_STACK, SKIP_ELSE_STACK, ADVANCE_STACK, PARAMETER_STACK};
+enum StackOption {CONTINUE_STACK, ELSE_STACK, BREAK_STACK, SKIP_ELSE_STACK, ADVANCE_STACK, PARAMETER_STACK, SAVED_REGISTERS_STACK};
 
 void push(int label, enum StackOption stackOption);
 int pop(enum StackOption stackOption);
@@ -81,5 +81,7 @@ void qStoreLocalArrayIndex(char* identifier, int regWithIndex, int regWithValue)
 void qStoreGlobalArrayIndex(char* identifier, int regWithIndex, int regWithValue);
 void qLoadDefaultValue(char* identifier);
 void qFunctionEnded();
+void qSaveAliveRegisters();
+void qRecoverAliveRegs();
 
 #endif /* CODE_GENERATION_H */

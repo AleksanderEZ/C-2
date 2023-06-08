@@ -277,7 +277,7 @@ expression
   ;
 
 function_call
-  : IDENTIFIER OPEN_PARENTHESIS arguments CLOSE_PARENTHESIS { checkFunExists($1); dummyReg(); $$ = qCallFunction($1); closeBlock(); }
+  : IDENTIFIER OPEN_PARENTHESIS { qSaveAliveRegisters(); } arguments CLOSE_PARENTHESIS { checkFunExists($1); dummyReg(); $$ = qCallFunction($1); closeBlock(); }
   | IDENTIFIER OPEN_PARENTHESIS CLOSE_PARENTHESIS { checkFunExists($1); $$ = qCallFunctionNoArgs($1); }
 //  | MALLOC OPEN_PARENTHESIS expression CLOSE_PARENTHESIS { qMalloc($3); }
 //  | SIZEOF OPEN_PARENTHESIS type CLOSE_PARENTHESIS { qSizeOf($3); }
