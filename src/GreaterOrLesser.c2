@@ -1,6 +1,6 @@
 int whichIsGreater(int number1, int number2) {
     if (number1 < number2) {
-        return 2;
+        return -1;
     }
     if (number1 == number2) {
         return 0;
@@ -11,16 +11,15 @@ int whichIsGreater(int number1, int number2) {
 int main() {
     int limit = 10;
     int numbers1[] = {0,1,2,3,4,5,6,7,8,9};
-    int numbers2[] = {0,1,6,5,3,7,2,6,45,6};
+    int numbers2[] = {-1,1,6,5,3,7,2,6,45,6};
 
     int n = 0;
     int number;
-//    char* message = "The sum is %d";
+    char* message = "The sum is %d\n";
     while(n < limit) {
         number = numbers2[n];
         printf("%d\n", whichIsGreater(numbers1[n], numbers2[n]));
-//        printf(message, numbers1[n] + number);
-        printf("The sum is %d\n", numbers1[n] + numbers2[n]);
+        printf(message, numbers1[n] + number);
         n=n+1;
     }
 

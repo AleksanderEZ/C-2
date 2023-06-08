@@ -1,0 +1,62 @@
+int main() {
+    int a = 0;
+    int b = 4;
+    int c = 5;
+    
+    if(a == 0){
+        printf("A == 0\n");
+    }
+
+    if(a < b){
+        printf("A < B\n");
+    } else {
+        printf("A >= B\n");
+    }
+
+    if (b == 3) {
+        printf("B == 3\n");
+    } else if (b == 4) {
+        printf("B == 4\n");
+    } else {
+        printf("B != 4 && B != 3\n");
+    }
+
+    if (c == 5) {
+        printf("C == 5\n");
+    } else if (c == 4) {
+        printf("C == 4\n");
+    }
+
+    if (c == 3) printf("C == 3\n"); else printf("C == 5\n");
+
+    if (c < a) {
+        printf("C < A\n");
+    } else printf("C >= A\n");
+
+    /*
+    if () {
+
+    } else if () ;
+
+    if ();
+    else () {
+
+    }
+
+    if ();
+    else if ();
+    else;
+
+    if ();
+    else if(){
+
+    } else;
+
+    if ();
+    else if (){
+
+    } else {
+
+    }
+    */
+}

@@ -515,6 +515,36 @@ void qPrint(int address, int reg) {
     if (reg != -1) qFinishPrint(originalReg);
 }
 
+void qPrintFromReg(int regString, int regValue) {
+    if (regValue != -1) qStartPrint(regValue);
+    if (regString == 0) {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", regString);
+        qLine();
+    }
+
+    snprintf(line, sizeof(char) * lineSizeLimit, "R0=%d;", label);
+    qLine();
+
+    if (regString != 0) {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R1=R%d;", regString);
+        qLine();
+    }
+
+    int originalReg = regValue;
+    if (regValue != -1) {
+        if (regValue == 1 || regValue == 2 || regValue == 0) regValue = rClone;
+        snprintf(line, sizeof(char) * lineSizeLimit, "R2=R%d;", regValue);
+        qLine();
+    }
+
+    qInstruction("GT(putf_);");
+
+    newLabel();
+    advanceLabel();
+
+    if (regValue != -1) qFinishPrint(originalReg);
+}
+
 void qPrintExplicit(char* expression) {
     qStat();
 
@@ -540,8 +570,10 @@ void qPrintExplicitFormat(char* formatString, int reg) {
 void qPrintImplicitFormat(char* identifier, int reg) {
     struct Reg* result = search(identifier);
     if (strcmp(result->typeReg->regName, "char*") != 0) yyerror("Identifier not of string type");
-
-    qPrint(result->value, reg);
+    int stringReg = qAssignRegister();
+    qLoadVar(stringReg, identifier);
+    qPrintFromReg(stringReg, reg);
+    qFreeRegister(stringReg);
 }
 
 void qStartWhile() {
@@ -725,6 +757,11 @@ void qSubtract(int reg1, int reg2) {
 }
 
 void qMultiply(int reg1, int reg2) {
+    if(reg2 == -1) {
+        snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*%d;", reg1, reg1, -1);
+        qLine();
+        return;
+    }
     snprintf(line, sizeof(char) * lineSizeLimit, "R%d=R%d*R%d;", reg1, reg1, reg2);
     qLine();
 }

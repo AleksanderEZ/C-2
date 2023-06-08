@@ -1,4 +1,4 @@
-TESTFILE = src/Sum2.c2
+TESTFILE = src/Ifelse.c2
 OBJECTFILE = obj.q.c
 IQ = IQ.o
 

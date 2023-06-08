@@ -270,6 +270,7 @@ expression
   | expression MODULUS expression { $$ = $1; qModulus($1, $3); qFreeRegister($3);}
   | function_call
   | IDENTIFIER array_index { checkVarExists($1); $$ = qAssignRegister(); qArrayAccess($$, $1, $2); qFreeRegister($2); }
+  | SUBTRACTION expression { $$ = $2; qMultiply($2, -1); }
 //  | ASTERISK IDENTIFIER { checkVarExists($2); }
 //  | AMPERSAND IDENTIFIER { checkVarExists($2); }
 //  | OPEN_PARENTHESIS type CLOSE_PARENTHESIS expression { $$ = $4; }
@@ -283,6 +284,7 @@ function_call
   | PRINTF OPEN_PARENTHESIS STRING_VALUE COMMA expression CLOSE_PARENTHESIS { qPrintExplicitFormat($3, $5); qFreeRegister($5);}
   | PRINTF OPEN_PARENTHESIS STRING_VALUE CLOSE_PARENTHESIS { qPrintExplicit($3); }
   | PRINTF OPEN_PARENTHESIS IDENTIFIER COMMA expression CLOSE_PARENTHESIS { qPrintImplicitFormat($3, $5); qFreeRegister($5);}
+  | PRINTF OPEN_PARENTHESIS IDENTIFIER CLOSE_PARENTHESIS { qPrintImplicitFormat($3, -1); }
   ;
 
 arguments
@@ -323,7 +325,7 @@ parameters
   ;
 
 type
-  : type ASTERISK { char* pointer = calloc(1, 8*sizeof(char)); pointer = strdup($1); strcat(pointer, "*"); newReg(pointer, type, NULL, yylineno); $$ = pointer; }
+  : type ASTERISK { char* pointer = calloc(1, 8*sizeof(char)); pointer = strdup($1); strcat(pointer, "*"); if(searchRegType(pointer, type) == NULL) newReg(pointer, type, NULL, yylineno); $$ = pointer; }
   | INT { $$ = "int";}
   | CHAR { $$ = "char";}
   | FLOAT { $$ = "float";}
