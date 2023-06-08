@@ -411,8 +411,10 @@ int qCallFunction(char* functionName) {
         qLine();
     }
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", paramSize + returnSize);
-    qLine();
+    //snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", paramSize + returnSize);
+    //qLine();
+
+    qPopStack(paramSize + returnSize);
 
     qRecoverAliveRegs();
 
