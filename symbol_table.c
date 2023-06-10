@@ -130,3 +130,13 @@ void dump(const char* message) {
         p = p->next;
     }
 }
+
+int checkValueExists(int value) {
+    struct Reg* p = getTop();
+    while(p != NULL) {
+        if (p->value == value) return 1;
+        p=p->next;
+    }
+    return 0;
+}
+        

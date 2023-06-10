@@ -188,7 +188,7 @@ complex_instruction
   ;
 
 instruction_block
-  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY { closeBlock(); variableSwitch = globalVariable; }
+  : OPEN_CURLY { variableSwitch = localVariable; } instructions CLOSE_CURLY { closeBlock(); }
   ;
 
 control

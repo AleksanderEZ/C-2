@@ -150,12 +150,14 @@ void qPushStack(int bytes) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7-%d;", bytes);
     qLine();
     stackAdvance += bytes;
+    printf("AAAA%dpush\n", stackAdvance);
 }
 
 void qPopStack(int bytes) {
     snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", bytes);
     qLine();
     stackAdvance -= bytes;
+    printf("AAAA%dpop\n", stackAdvance);
 }
 
 void qFreeStack() {
@@ -167,6 +169,7 @@ void qRecoverBase() {
     qInstruction("R6=P(R7+4);");
     if (topAdvance == -1) return;
     stackAdvance = pop(ADVANCE_STACK);
+    printf("AAAA%d", stackAdvance);
 }
 
 void qFunctionReturn() {
@@ -468,8 +471,10 @@ int qCallFunctionNoArgs(char* functionName) {
         qLine();
     }
 
-    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", 8 + returnSize);
-    qLine();
+//    snprintf(line, sizeof(char) * lineSizeLimit, "R7=R7+%d;", 8 + returnSize);
+//    qLine();
+
+    qPopStack(8+returnSize);
 
     if(returnSize > 0) {
         return reg;
@@ -484,6 +489,8 @@ void qReturn(int reg) {
     char* functionType = searchResult->typeReg->regName;
     if (reg == 400 && strcmp(functionType, "void") != 0) yyerror("Empty return in typed function");
     if (strcmp(functionType, "void") == 0) {
+        qFreeStack();
+        qRecoverBase();
         qFunctionReturn();
         return;
     }
@@ -755,6 +762,9 @@ void qStoreLocal(int reg, char* identifier) {
 
     if (stEntry->value == notAssigned) {
         qPushStack(qSizeOf(entryType->regName));
+        while(checkValueExists(stackAdvance) == 1) {
+            qPushStack(qSizeOf(entryType->regName));
+        }
         stEntry->value = stackAdvance;
     }
     snprintf(line, sizeof(char) * lineSizeLimit, "%c(R6-%d)=R%d;", qTypeMnemonic(entryType->regName), stEntry->value, reg);

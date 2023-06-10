@@ -5,7 +5,7 @@ char* getMessage() {
 int main() {
     char* message = getMessage();
     printf(message);
-    int numbers[5];
+    int numbers[7];
     int n = 0;
     while(n < 5) {
         numbers[n] = 5 - n;
@@ -28,6 +28,7 @@ int main() {
                 minIndex = m;
             }
             if (minIndex != n) {
+                char c = '?';
                 int temp = numbers[minIndex];
                 numbers[minIndex] = numbers[n];
                 numbers[n] = temp;

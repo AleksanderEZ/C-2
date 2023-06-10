@@ -26,5 +26,6 @@ void closeBlock();
 void startClosingBlock();
 void clear();
 void dump(const char* message);
+int checkValueExists(int value);
 
 #endif /* SYMBOL_TABLE_H */

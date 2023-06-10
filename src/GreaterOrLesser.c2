@@ -16,10 +16,11 @@ int main() {
     int n = 0;
     int number;
     char* message = "The sum is %d\n";
+    char* m2 = message;
     while(n < limit) {
         number = numbers2[n];
         printf("%d\n", whichIsGreater(numbers1[n], numbers2[n]));
-        printf(message, numbers1[n] + number);
+        printf(m2, numbers1[n] + number);
         n=n+1;
     }
 
